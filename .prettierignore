@@ -1,0 +1,6 @@
+dist/
+node_modules/
+.astro/
+package-lock.json
+*.docx
+technical_blog_complete_specification_package/
