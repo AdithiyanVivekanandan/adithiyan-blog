@@ -1,0 +1,97 @@
+:root {
+  color-scheme: light;
+
+  --color-canvas: #f6f4ef;
+  --color-surface: #efebe2;
+  --color-surface-raised: #ffffff;
+  --color-text-primary: #20211f;
+  --color-text-secondary: #62645f;
+  --color-accent: #b65337;
+  --color-accent-text: #ae4c31;
+  --color-border: #d8d5cc;
+  --color-quiet-green: #b9c0b5;
+  --color-focus-ring: #20211f;
+  --color-success: #1a5d36;
+  --color-warning: #7a5107;
+  --color-error: #9b1c1c;
+
+  --font-display:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia,
+    ui-serif, serif;
+  --font-body:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  --font-mono:
+    ui-monospace, "Cascadia Mono", "Source Code Pro", Menlo, Consolas,
+    "DejaVu Sans Mono", monospace;
+
+  --text-body: 1.125rem;
+  --leading-body: 1.7;
+  --leading-heading: 1.2;
+  --measure: 68ch;
+
+  --step-h1: clamp(2rem, 1.5rem + 2vw, 2.75rem);
+  --step-h2: clamp(1.5rem, 1.35rem + 0.8vw, 1.875rem);
+  --step-h3: clamp(1.25rem, 1.2rem + 0.4vw, 1.5rem);
+  --step-display: clamp(2.25rem, 1.6rem + 2.8vw, 3.25rem);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --space-10: 80px;
+  --space-11: 96px;
+
+  --gutter: clamp(1rem, 0.5rem + 2vw, 1.5rem);
+  --container-max: 70rem;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --motion-fast: 140ms;
+  --motion-base: 180ms;
+  --motion-ease: ease;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #202321;
+  --color-surface: #292e2a;
+  --color-surface-raised: #303631;
+  --color-text-primary: #f0efe8;
+  --color-text-secondary: #c1c4bd;
+  --color-accent: #e49a7a;
+  --color-accent-text: #e49a7a;
+  --color-border: #454a45;
+  --color-quiet-green: #59645a;
+  --color-focus-ring: #f0efe8;
+  --color-success: #7fcb9b;
+  --color-warning: #e0b25c;
+  --color-error: #f2938c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --color-canvas: #202321;
+    --color-surface: #292e2a;
+    --color-surface-raised: #303631;
+    --color-text-primary: #f0efe8;
+    --color-text-secondary: #c1c4bd;
+    --color-accent: #e49a7a;
+    --color-accent-text: #e49a7a;
+    --color-border: #454a45;
+    --color-quiet-green: #59645a;
+    --color-focus-ring: #f0efe8;
+    --color-success: #7fcb9b;
+    --color-warning: #e0b25c;
+    --color-error: #f2938c;
+  }
+}

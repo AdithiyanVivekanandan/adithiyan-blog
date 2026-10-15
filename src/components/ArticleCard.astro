@@ -1,0 +1,38 @@
+---
+import {
+  formatArticleDate,
+  isoDateOnly,
+  readingTimeMinutes,
+  type ArticleEntry,
+} from "../lib/articles";
+import { topicLabel } from "../lib/topics";
+
+interface Props {
+  article: ArticleEntry;
+  headingLevel?: 2 | 3;
+}
+
+const { article, headingLevel = 2 } = Astro.props;
+const { data } = article;
+const Heading = headingLevel === 3 ? "h3" : "h2";
+const href = `/articles/${data.slug}/`;
+const publishedAt = data.publishedAt;
+const minutes = readingTimeMinutes(article.body ?? "");
+---
+
+<li class="article-card">
+  <Heading class="article-card__title">
+    <a href={href}>{data.title}</a>
+  </Heading>
+  <p class="article-card__summary">{data.description}</p>
+  <p class="article-card__meta">
+    <span class="topic-chip">{topicLabel(data.topics[0])}</span>
+    {publishedAt && (
+      <time datetime={isoDateOnly(publishedAt)}>
+        {formatArticleDate(publishedAt)}
+      </time>
+    )}
+    <span>{minutes} min read</span>
+    {data.updatedAt && <span>Updated {formatArticleDate(data.updatedAt)}</span>}
+  </p>
+</li>

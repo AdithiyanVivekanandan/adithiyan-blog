@@ -1,0 +1,165 @@
+---
+import { render } from "astro:content";
+import { AUTHOR } from "../../consts";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  formatArticleDate,
+  getPublishedArticles,
+  isoDateOnly,
+  readingTimeMinutes,
+  type ArticleEntry,
+} from "../../lib/articles";
+import { topicLabel } from "../../lib/topics";
+import "../../styles/article.css";
+
+interface Props {
+  entry: ArticleEntry;
+}
+
+export async function getStaticPaths() {
+  const published = await getPublishedArticles();
+  return published.map((entry) => ({
+    params: { slug: entry.data.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const { data } = entry;
+
+if (data.status !== "published" || !data.publishedAt) {
+  throw new Error(
+    `article route rendered for non-published entry: ${entry.id}`,
+  );
+}
+
+const publishedAt = data.publishedAt;
+const minutes = readingTimeMinutes(entry.body ?? "");
+const canonical = new URL(`/articles/${data.slug}/`, Astro.site);
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: data.title,
+  description: data.description,
+  datePublished: publishedAt.toISOString(),
+  ...(data.updatedAt ? { dateModified: data.updatedAt.toISOString() } : {}),
+  author: { "@type": "Person", name: AUTHOR },
+  mainEntityOfPage: canonical.href,
+  articleSection: topicLabel(data.topics[0]),
+};
+---
+
+<BaseLayout
+  title={data.title}
+  description={data.description}
+  type="article"
+  publishedAt={publishedAt}
+  updatedAt={data.updatedAt}
+>
+  <article class="article">
+    <nav class="article__breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li>
+          <a href="/">Home</a>
+        </li>
+        <li>
+          <a href="/articles/">Articles</a>
+        </li>
+        <li aria-current="page">{data.title}</li>
+      </ol>
+    </nav>
+
+    <header>
+      <p class="article__topic">
+        <span class="topic-chip">{topicLabel(data.topics[0])}</span>
+      </p>
+      <h1 class="article__title">{data.title}</h1>
+      <p class="article__summary">{data.description}</p>
+      <p class="article__meta">
+        <span>By {AUTHOR}</span>
+        <span>
+          Published
+          <time datetime={isoDateOnly(publishedAt)}>
+            {formatArticleDate(publishedAt)}
+          </time>
+        </span>
+        {data.updatedAt && (
+          <span>
+            Updated
+            <time datetime={isoDateOnly(data.updatedAt)}>
+              {formatArticleDate(data.updatedAt)}
+            </time>
+          </span>
+        )}
+        <span>{minutes} min read</span>
+      </p>
+      {data.technicalContext && (
+        <aside class="article__context" aria-label="Technical context">
+          <span class="article__label">Technical context</span>
+          {data.technicalContext}
+        </aside>
+      )}
+    </header>
+
+    <div class="article__body">
+      <Content />
+    </div>
+
+    <hr class="article__end" />
+
+    {data.limitations && (
+      <section
+        class="article__footer-section"
+        aria-labelledby="limitations-heading"
+      >
+        <h2 id="limitations-heading">Limitations</h2>
+        <div class="article__limitations">
+          <p>{data.limitations}</p>
+        </div>
+      </section>
+    )}
+
+    {data.references && data.references.length > 0 && (
+      <section
+        class="article__footer-section"
+        aria-labelledby="references-heading"
+      >
+        <h2 id="references-heading">References</h2>
+        <ol class="article__references">
+          {data.references.map((reference) => (
+            <li>
+              <a href={reference.url}>{reference.title}</a>
+              {reference.annotation && (
+                <p class="article__reference-note">{reference.annotation}</p>
+              )}
+            </li>
+          ))}
+        </ol>
+      </section>
+    )}
+
+    <p class="article__back">
+      <a href="/articles/">Back to all articles</a>
+    </p>
+
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify(jsonLd).replace(/</g, "\\u003c")}
+    />
+  </article>
+  <script>
+    const blocks = document.querySelectorAll<HTMLElement>("pre.astro-code");
+
+    for (const block of blocks) {
+      const language = block.dataset.language;
+      if (language) {
+        block.setAttribute("role", "region");
+        block.setAttribute("aria-label", `${language} code sample`);
+        block.dataset.langLabel = language;
+      }
+    }
+  </script>
+</BaseLayout>

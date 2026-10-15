@@ -1,0 +1,43 @@
+---
+import { SITE_TITLE } from "../consts";
+import ThemeToggle from "./ThemeToggle.astro";
+
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+
+const navItems = [{ href: "/articles/", label: "Articles" }];
+
+const isCurrent = (href: string) => currentPath === href;
+---
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a
+      class="wordmark"
+      href="/"
+      aria-current={currentPath === "/" ? "page" : undefined}
+    >
+      {SITE_TITLE}
+    </a>
+    <div class="site-header__actions">
+      <nav class="site-nav" aria-label="Primary">
+        <ul>
+          {navItems.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                aria-current={isCurrent(item.href) ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <ThemeToggle />
+    </div>
+  </div>
+</header>

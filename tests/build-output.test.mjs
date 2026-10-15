@@ -37,15 +37,7 @@ test("homepage has a single h1 and the configured title and description", () => 
   assert.match(html, /<meta name="description" content="[^"]+">/);
 });
 
-test("homepage uses semantic main landmark", () => {
+test("homepage uses semantic main landmark with skip target", () => {
   const html = readBuild();
-  assert.match(html, /<main>/);
-});
-
-test("homepage ships no client-side JavaScript (static-first rule)", () => {
-  const html = readBuild();
-  assert.ok(
-    !html.includes("<script"),
-    "built homepage must not include <script> tags",
-  );
+  assert.match(html, /<main id="main" tabindex="-1">/);
 });

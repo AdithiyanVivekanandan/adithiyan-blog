@@ -1,0 +1,25 @@
+---
+import ArticleCard from "../../components/ArticleCard.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getPublishedArticles } from "../../lib/articles";
+
+const articles = await getPublishedArticles();
+---
+
+<BaseLayout
+  title="Articles"
+  description="All published articles from Technical Fieldnotes, newest first."
+>
+  <h1 class="page-title">Articles</h1>
+  <p class="page-intro">Newest first.</p>
+
+  {articles.length > 0 ? (
+    <ul class="article-list article-list--index">
+      {articles.map((article) => (
+        <ArticleCard article={article} headingLevel={2} />
+      ))}
+    </ul>
+  ) : (
+    <p class="empty-state">No articles have been published yet.</p>
+  )}
+</BaseLayout>

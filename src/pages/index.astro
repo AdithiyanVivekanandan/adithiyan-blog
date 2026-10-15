@@ -1,19 +1,55 @@
 ---
+import ArticleCard from "../components/ArticleCard.astro";
 import { SITE_DESCRIPTION, SITE_TITLE } from "../consts";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getPublishedArticles } from "../lib/articles";
+
+const articles = await getPublishedArticles();
+const [featured, ...rest] = articles;
+const recent = rest.slice(0, 3);
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{SITE_TITLE}</title>
-    <meta name="description" content={SITE_DESCRIPTION} />
-  </head>
-  <body>
-    <main>
-      <h1>{SITE_TITLE}</h1>
-      <p>{SITE_DESCRIPTION}</p>
-    </main>
-  </body>
-</html>
+<BaseLayout>
+  <section class="masthead">
+    <h1>{SITE_TITLE}</h1>
+    <p class="masthead__statement">{SITE_DESCRIPTION}</p>
+  </section>
+
+  {featured && (
+    <section aria-labelledby="featured-heading">
+      <h2 id="featured-heading" class="section-heading">
+        Featured
+      </h2>
+      <ul class="article-list">
+        <ArticleCard article={featured} headingLevel={3} />
+      </ul>
+    </section>
+  )}
+
+  {recent.length > 0 && (
+    <section aria-labelledby="recent-heading">
+      <h2 id="recent-heading" class="section-heading">
+        Recent writing
+      </h2>
+      <ul class="article-list">
+        {recent.map((article) => (
+          <ArticleCard article={article} headingLevel={3} />
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {articles.length === 0 && (
+    <p class="empty-state">No articles have been published yet.</p>
+  )}
+
+  <p class="view-all">
+    <a href="/articles/">All articles</a>
+  </p>
+
+  <p class="author-note">
+    Technical Fieldnotes is written and maintained by Adithiyan V. Each article
+    states its environment, evidence and limitations so you can reproduce the
+    work or argue with it.
+  </p>
+</BaseLayout>
