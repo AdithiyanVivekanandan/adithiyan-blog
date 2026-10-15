@@ -1,0 +1,13 @@
+TECHNICAL BLOG COMPLETE SPECIFICATION PACKAGE
+Generated 15 October 2026
+
+Read in this order:
+00_master_package_index.docx
+01_product_strategy_and_audience.docx
+02_visual_design_and_responsive_spec.docx
+03_information_architecture_and_page_specs.docx
+04_engineering_architecture_and_publishing.docx
+05_security_threat_model_and_hardening.docx
+06_qa_launch_and_operations_runbook.docx
+technical_fieldnotes_complete_design_specification.docx
+These are planning and implementation specifications, not a certification. Validate settings against your actual hosting configuration and test the built site before launch.
