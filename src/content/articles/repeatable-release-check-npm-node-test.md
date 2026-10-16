@@ -1,7 +1,7 @@
 ---
 title: "Building a repeatable release check with npm scripts and node:test"
 slug: "repeatable-release-check-npm-node-test"
-description: "How to chain formatting, linting, type checks, secret scanning and a production build behind one npm script — using only npm and Node's built-in test runner — and how to prove the chain fails when it should."
+description: "How to chain formatting, linting, type checks, secret scanning, dependency auditing, a production build and tests behind one npm script — and how to prove the chain fails when it should."
 publishedAt: 2026-10-12
 status: published
 topics:
@@ -50,13 +50,33 @@ Each check already has a command, so the gate is a chain. In `package.json`:
   "scripts": {
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "astro check",
+    "lint:secrets": "secretlint \"**/*\"",
+    "audit:deps": "npm audit --audit-level=high",
     "build": "astro build",
     "test": "node --test \"tests/**/*.test.mjs\"",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm test"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run lint:secrets && npm run audit:deps && npm run build && npm test"
   }
 }
 ```
+
+<figure class="pipeline">
+ <figcaption>
+  The release gate runs seven stages in order: formatting, linting, type
+  checking, secret scanning, dependency auditing, the production build and
+  tests. Each command must exit successfully before the next runs, and the
+  chain stops at the first failure.
+</figcaption>
+  <ol class="pipeline__stages">
+    <li><a href="#chain-the-checks-behind-one-script">format:check</a></li>
+    <li><a href="#chain-the-checks-behind-one-script">lint</a></li>
+    <li><a href="#chain-the-checks-behind-one-script">typecheck</a></li>
+    <li><a href="#chain-the-checks-behind-one-script">lint:secrets</a></li>
+    <li><a href="#chain-the-checks-behind-one-script">audit:deps</a></li>
+    <li><a href="#prove-the-gate-can-fail">build</a></li>
+    <li><a href="#prove-the-gate-can-fail">test</a></li>
+  </ol>
+</figure>
 
 `&&` is the whole trick: each command must exit `0` before the next one runs, and the chain stops at the first failure, propagating a non-zero exit status to the caller. CI systems and shell scripts treat that status as pass or fail, so the same command behaves identically locally and in CI.
 
@@ -95,4 +115,4 @@ Delete `dist/` and run it again: the test fails, the message explains why, and t
 
 ## What the gate does not catch
 
-The chain is mechanical: it verifies the code it is pointed at, on the machine that runs it. It does not verify dependency intent — `npm audit` (if you add it) only reports advisories from the npm registry — and it does not prove anything about accessibility, performance or behaviour on a real device. Those still need separate, deliberate checks. Treat the gate as the floor for every publish, not as the ceiling.
+The chain is mechanical: it verifies the code it is pointed at, on the machine that runs it. It does not verify dependency intent — `npm audit` only reports advisories from the npm registry — and it does not prove anything about accessibility, performance or behaviour on a real device. Those still need separate, deliberate checks. Treat the gate as the floor for every publish, not as the ceiling.
