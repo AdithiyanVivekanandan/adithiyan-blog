@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const distDir = fileURLToPath(new URL("../dist", import.meta.url));
-const SITE = "https://example.com";
+const SITE = "https://blog.adithiyan.me";
 
 const MARKERS = [
   "draft-canary-7f2e91",

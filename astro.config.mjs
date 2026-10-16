@@ -2,7 +2,7 @@ import { defineConfig } from "astro/config";
 
 export default defineConfig({
   output: "static",
-  site: "https://example.com",
+  site: "https://blog.adithiyan.me",
   markdown: {
     shikiConfig: {
       themes: {
