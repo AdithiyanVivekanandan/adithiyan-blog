@@ -84,7 +84,9 @@ const jsonLd = {
 
     <header>
       <p class="article__topic">
-        <span class="topic-chip">{topicLabel(data.topics[0])}</span>
+        <span class="article__label">
+          Field note · {data.topics.map((slug) => topicLabel(slug)).join(" · ")}
+        </span>
       </p>
       <h1 class="article__title">{data.title}</h1>
       <p class="article__summary">{data.description}</p>

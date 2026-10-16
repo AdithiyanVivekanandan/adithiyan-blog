@@ -81,6 +81,7 @@ a:hover {
 }
 
 .site-header {
+  position: relative;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -247,6 +248,12 @@ main {
 
 .view-all {
   margin-top: var(--space-6);
+}
+
+.feed-note {
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
 }
 
 .author-note {
@@ -516,4 +523,65 @@ main {
 
 .about-prose li + li {
   margin-top: var(--space-3);
+}
+
+.nav-toggle {
+  display: none;
+}
+
+@media (max-width: 47.99rem) {
+  html.js .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: border-color var(--motion-fast) var(--motion-ease);
+  }
+
+  html.js .nav-toggle:hover {
+    border-color: var(--color-text-secondary);
+  }
+
+  html.js .site-nav {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    z-index: 40;
+    display: none;
+    padding-block: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-canvas);
+  }
+
+  html.js .site-nav[data-open] {
+    display: block;
+  }
+
+  html.js .site-nav ul {
+    flex-direction: column;
+    gap: 0;
+    width: min(100% - 2 * var(--gutter), var(--container-max));
+    margin-inline: auto;
+  }
+
+  html.js .site-nav a {
+    justify-content: flex-start;
+    min-height: 2.75rem;
+  }
+}
+
+.recovery-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-5);
+  padding: 0;
+  list-style: none;
 }

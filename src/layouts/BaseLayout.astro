@@ -11,6 +11,7 @@ interface Props {
   type?: "website" | "article";
   publishedAt?: Date;
   updatedAt?: Date;
+  noindex?: boolean;
 }
 
 const {
@@ -19,6 +20,7 @@ const {
   type = "website",
   publishedAt,
   updatedAt,
+  noindex = false,
 } = Astro.props;
 
 const fullTitle =
@@ -33,11 +35,24 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
     <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={SITE_TITLE}
+      href="/rss.xml"
+    />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
+    <meta property="og:site_name" content={SITE_TITLE} />
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
     {type === "article" && publishedAt && (
       <meta
         property="article:published_time"

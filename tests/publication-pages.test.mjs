@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -35,7 +35,9 @@ function readPage(relative) {
 
 function distHasRoute(href) {
   const path = href.replace(/^\//, "").replace(/\/$/, "");
-  return existsSync(join(distDir, path, "index.html"));
+  if (existsSync(join(distDir, path, "index.html"))) return true;
+  const direct = join(distDir, path);
+  return existsSync(direct) && statSync(direct).isFile();
 }
 
 test("topic index lists only topics with live articles and correct counts", () => {
@@ -179,4 +181,29 @@ test("draft and future fixture identifiers stay out of every new public route", 
       );
     }
   }
+});
+
+test("article pages carry a data-driven field-note kicker above the title", () => {
+  const html = readPage(
+    "articles/repeatable-release-check-npm-node-test/index.html",
+  );
+  const topicPara =
+    html.match(/<p class="article__topic">([\s\S]*?)<\/p>/)?.[1] ?? "";
+  assert.ok(
+    topicPara.includes("Field note · Systems &amp; Tooling"),
+    "kicker combines the signature prefix with the article's own topic",
+  );
+  assert.ok(
+    topicPara.includes("article__label"),
+    "kicker reuses the existing label styling",
+  );
+  assert.ok(
+    !topicPara.includes("topic-chip"),
+    "article detail uses the kicker text, not the listing card chip",
+  );
+  const title = html.indexOf('<h1 class="article__title">');
+  assert.ok(
+    html.indexOf("Field note ·") < title && title !== -1,
+    "kicker precedes the article title",
+  );
 });

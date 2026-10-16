@@ -33,7 +33,10 @@ for (const page of pages) {
       /<a class="skip-link" href="#main">Skip to main content<\/a>/,
     );
     assert.match(html, /<header class="site-header">/);
-    assert.match(html, /<nav class="site-nav" aria-label="Primary">/);
+    assert.match(
+      html,
+      /<nav id="site-nav" class="site-nav" aria-label="Primary">/,
+    );
     assert.match(html, /<footer class="site-footer">/);
     assert.match(html, /<nav aria-label="Footer">/);
   });

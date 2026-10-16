@@ -1,0 +1,25 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Page not found"
+  description="The requested Technical Fieldnotes page does not exist. Return to the homepage, browse all articles, or explore topics."
+  noindex
+>
+  <h1 class="page-title">Page not found</h1>
+  <p class="page-intro">
+    The note you are looking for does not exist, or its address has changed.
+  </p>
+  <ul class="recovery-links">
+    <li>
+      <a href="/">Home</a>
+    </li>
+    <li>
+      <a href="/articles/">All articles</a>
+    </li>
+    <li>
+      <a href="/topics/">Topics</a>
+    </li>
+  </ul>
+</BaseLayout>
