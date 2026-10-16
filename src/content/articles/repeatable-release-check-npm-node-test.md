@@ -14,7 +14,7 @@ references:
     url: "https://docs.npmjs.com/cli/commands/npm-ci"
     annotation: "Installs exactly what the lockfile describes and fails when it disagrees with package.json."
   - title: "npm run-script"
-    url: "https://docs.npmjs.com/cli/commands/npm-run-script"
+    url: "https://docs.npmjs.com/cli/commands/npm-run/"
   - title: "npm audit"
     url: "https://docs.npmjs.com/cli/commands/npm-audit"
     annotation: "Registry advisories only; useful as one gate among several, not as a full security review."
