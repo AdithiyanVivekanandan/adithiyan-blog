@@ -1,0 +1,37 @@
+---
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+}
+
+const { headings } = Astro.props;
+
+const items = headings.filter(
+  (heading) => heading.depth === 2 || heading.depth === 3,
+);
+const sectionCount = headings.filter((heading) => heading.depth === 2).length;
+---
+
+{sectionCount >= 2 && (
+  <details class="article__toc" open>
+    <summary class="article__toc-summary">On this page</summary>
+    <ul class="article__toc-list">
+      {items.map((item) => (
+        <li
+          class={
+            item.depth === 3
+              ? "article__toc-item article__toc-item--sub"
+              : "article__toc-item"
+          }
+        >
+          <a href={`#${item.slug}`}>{item.text}</a>
+        </li>
+      ))}
+    </ul>
+  </details>
+)}

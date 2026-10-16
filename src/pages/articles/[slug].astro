@@ -1,7 +1,14 @@
 ---
 import { render } from "astro:content";
 import { AUTHOR } from "../../consts";
+import ArticleCard from "../../components/ArticleCard.astro";
+import ArticlePager from "../../components/ArticlePager.astro";
+import ArticleToc from "../../components/ArticleToc.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  getAdjacentArticles,
+  getRelatedArticles,
+} from "../../lib/article-policy";
 import {
   formatArticleDate,
   getPublishedArticles,
@@ -25,7 +32,7 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
 const { data } = entry;
 
 if (data.status !== "published" || !data.publishedAt) {
@@ -33,6 +40,10 @@ if (data.status !== "published" || !data.publishedAt) {
     `article route rendered for non-published entry: ${entry.id}`,
   );
 }
+
+const published = await getPublishedArticles();
+const { previous, next } = getAdjacentArticles(entry, published);
+const related = getRelatedArticles(entry, published);
 
 const publishedAt = data.publishedAt;
 const minutes = readingTimeMinutes(entry.body ?? "");
@@ -103,6 +114,8 @@ const jsonLd = {
       )}
     </header>
 
+    <ArticleToc headings={headings} />
+
     <div class="article__body">
       <Content />
     </div>
@@ -130,7 +143,10 @@ const jsonLd = {
         <ol class="article__references">
           {data.references.map((reference) => (
             <li>
-              <a href={reference.url}>{reference.title}</a>
+              <a href={reference.url} rel="external noopener noreferrer">
+                {reference.title}
+                <span class="visually-hidden">(external link)</span>
+              </a>
               {reference.annotation && (
                 <p class="article__reference-note">{reference.annotation}</p>
               )}
@@ -139,6 +155,22 @@ const jsonLd = {
         </ol>
       </section>
     )}
+
+    {related.length > 0 && (
+      <section
+        class="article__footer-section"
+        aria-labelledby="related-heading"
+      >
+        <h2 id="related-heading">Related articles</h2>
+        <ul class="article-list">
+          {related.map((article) => (
+            <ArticleCard article={article} headingLevel={3} />
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <ArticlePager previous={previous} next={next} />
 
     <p class="article__back">
       <a href="/articles/">Back to all articles</a>
@@ -155,11 +187,73 @@ const jsonLd = {
 
     for (const block of blocks) {
       const language = block.dataset.language;
-      if (language) {
-        block.setAttribute("role", "region");
-        block.setAttribute("aria-label", `${language} code sample`);
-        block.dataset.langLabel = language;
-      }
+      if (!language) continue;
+
+      block.setAttribute("role", "region");
+      block.setAttribute("aria-label", `${language} code sample`);
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "code-block";
+
+      const bar = document.createElement("div");
+      bar.className = "code-block__bar";
+
+      const label = document.createElement("span");
+      label.className = "code-block__lang";
+      label.textContent = language;
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "copy-code";
+      button.textContent = "Copy";
+
+      const status = document.createElement("span");
+      status.className = "copy-code__status";
+      status.setAttribute("role", "status");
+
+      bar.append(label, button, status);
+
+      block.parentNode?.insertBefore(wrapper, block);
+      wrapper.append(bar, block);
+      block.removeAttribute("data-language");
+
+      const code = block.querySelector("code") ?? block;
+
+      const selectCode = () => {
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      };
+
+      button.addEventListener("click", () => {
+        const text = code.textContent ?? "";
+        const clipboard = navigator.clipboard;
+        if (!clipboard) {
+          selectCode();
+          button.dataset.state = "error";
+          status.dataset.state = "error";
+          status.textContent =
+            "Copy unavailable — code selected, press Ctrl+C to copy.";
+          return;
+        }
+        clipboard.writeText(text).then(
+          () => {
+            button.dataset.state = "success";
+            button.textContent = "Copied";
+            status.dataset.state = "";
+            status.textContent = "Copied to clipboard.";
+          },
+          () => {
+            selectCode();
+            button.dataset.state = "error";
+            status.dataset.state = "error";
+            status.textContent =
+              "Copy failed — code selected, press Ctrl+C to copy.";
+          },
+        );
+      });
     }
   </script>
 </BaseLayout>

@@ -16,6 +16,9 @@ const homepageUrl = new URL("../dist/index.html", import.meta.url);
 
 const DRAFT_CANARY = "draft-canary-7f2e91";
 const DRAFT_SLUG = "draft-fixture-leaked-token";
+const FUTURE_CANARY = "future-canary-5b8d31";
+const FUTURE_SLUG = "fixture-future-dated";
+const EXCLUDED_MARKERS = [DRAFT_CANARY, DRAFT_SLUG, FUTURE_CANARY, FUTURE_SLUG];
 
 function readBuild(url) {
   if (!existsSync(url)) {
@@ -37,24 +40,26 @@ function walk(dir) {
   return files;
 }
 
-test("draft article is fully excluded from the public build", () => {
+test("draft and future-dated fixtures are fully excluded from the public build", () => {
   assert.ok(existsSync(distDir), "dist/ must exist - run `npm run build`");
   const leakedFiles = [];
   for (const file of walk(distDir)) {
     const content = readFileSync(file, "utf8");
-    if (content.includes(DRAFT_CANARY) || content.includes(DRAFT_SLUG)) {
+    if (EXCLUDED_MARKERS.some((marker) => content.includes(marker))) {
       leakedFiles.push(file);
     }
   }
   assert.deepEqual(
     leakedFiles,
     [],
-    "draft fixture identifiers must not appear anywhere in dist/",
+    "draft and scheduled-fixture identifiers must not appear anywhere in dist/",
   );
-  assert.ok(
-    !existsSync(join(distDir, "articles", DRAFT_SLUG)),
-    "no route may be generated for the draft slug",
-  );
+  for (const slug of [DRAFT_SLUG, FUTURE_SLUG]) {
+    assert.ok(
+      !existsSync(join(distDir, "articles", slug)),
+      `no route may be generated for excluded slug ${slug}`,
+    );
+  }
 });
 
 test("article page renders metadata, dates and references", () => {
@@ -111,16 +116,73 @@ test("article page code blocks are keyboard-reachable regions", () => {
   assert.ok(html.includes("--shiki-dark"), "dark code theme must be present");
 });
 
-test("articles index and homepage list only the published article", () => {
+test("articles index and homepage list only live articles", () => {
   for (const url of [homepageUrl, articlesIndexUrl]) {
     const html = readBuild(url);
     assert.ok(
       html.includes("repeatable-release-check-npm-node-test"),
       `${url.pathname} must link the published article`,
     );
+    for (const marker of [DRAFT_SLUG, FUTURE_SLUG]) {
+      assert.ok(
+        !html.includes(marker),
+        `${url.pathname} must not mention ${marker}`,
+      );
+    }
+  }
+});
+
+test("article page renders a table of contents whose anchors resolve", () => {
+  const html = readBuild(articleUrl);
+  const tocMatch = html.match(
+    /<details class="article__toc"[\s\S]*?<\/details>/,
+  );
+  assert.ok(tocMatch, "expected a table of contents disclosure");
+  const hrefs = [...tocMatch[0].matchAll(/href="#([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(
+    hrefs.length >= 2,
+    `expected at least two TOC entries, got ${hrefs.length}`,
+  );
+  for (const id of hrefs) {
     assert.ok(
-      !html.includes(DRAFT_SLUG),
-      `${url.pathname} must not mention the draft`,
+      html.includes(`id="${id}"`),
+      `TOC anchor #${id} must match a heading id in the article body`,
     );
   }
+});
+
+test("article page ships the progressive copy-code enhancement", () => {
+  const html = readBuild(articleUrl);
+  assert.ok(
+    html.includes("copy-code"),
+    "copy-code control strings must ship in the article script",
+  );
+  assert.ok(
+    html.includes("Copy failed"),
+    "clipboard-failure feedback path must ship",
+  );
+  assert.ok(
+    html.includes("Copy unavailable"),
+    "missing-clipboard fallback path must ship",
+  );
+  const moduleScripts =
+    html.match(/<script type="module">[\s\S]*?<\/script>/g) ?? [];
+  assert.ok(
+    moduleScripts.some((script) => script.includes("copy-code")),
+    "copy-code logic must live in a bundled module script",
+  );
+});
+
+test("reference links carry external-link accessible labels", () => {
+  const html = readBuild(articleUrl);
+  assert.ok(
+    html.includes('rel="external noopener noreferrer"'),
+    "reference links must declare external rel values",
+  );
+  assert.ok(
+    html.includes("(external link)"),
+    "reference links must include a visually hidden external-link label",
+  );
 });

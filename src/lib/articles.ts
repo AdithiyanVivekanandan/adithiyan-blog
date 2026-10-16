@@ -1,15 +1,24 @@
 import { getCollection, type CollectionEntry } from "astro:content";
 
+import {
+  assertUniqueSlugs,
+  compareArticles,
+  isLiveArticle,
+} from "./article-policy";
+
 export type ArticleEntry = CollectionEntry<"articles">;
 
+export async function getAllArticles(): Promise<ArticleEntry[]> {
+  const all = await getCollection("articles");
+  assertUniqueSlugs(all);
+  return all;
+}
+
 export async function getPublishedArticles(): Promise<ArticleEntry[]> {
-  const published = await getCollection(
-    "articles",
-    ({ data }) => data.status === "published",
-  );
-  return published.sort(
-    (a, b) => b.data.publishedAt!.getTime() - a.data.publishedAt!.getTime(),
-  );
+  const now = new Date();
+  return (await getAllArticles())
+    .filter((article) => isLiveArticle(article, now))
+    .sort(compareArticles);
 }
 
 export function readingTimeMinutes(body: string): number {

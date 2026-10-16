@@ -1,0 +1,35 @@
+---
+import type { ArticleLike } from "../lib/article-policy";
+
+interface Props {
+  previous: ArticleLike | null;
+  next: ArticleLike | null;
+}
+
+const { previous, next } = Astro.props;
+---
+
+{(previous || next) && (
+  <nav class="article__pager" aria-label="Previous and next articles">
+    {previous && (
+      <a
+        class="pager-link pager-link--previous"
+        href={`/articles/${previous.data.slug}/`}
+        rel="prev"
+      >
+        <span class="pager-link__label">Previous article</span>
+        <span class="pager-link__title">{previous.data.title}</span>
+      </a>
+    )}
+    {next && (
+      <a
+        class="pager-link pager-link--next"
+        href={`/articles/${next.data.slug}/`}
+        rel="next"
+      >
+        <span class="pager-link__label">Next article</span>
+        <span class="pager-link__title">{next.data.title}</span>
+      </a>
+    )}
+  </nav>
+)}

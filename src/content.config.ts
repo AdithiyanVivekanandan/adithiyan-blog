@@ -1,13 +1,8 @@
-import { defineCollection, z } from "astro:content";
+import { defineCollection } from "astro:content";
+import { z } from "astro/zod";
 import { glob } from "astro/loaders";
 
-const approvedTopics = [
-  "ai-engineering",
-  "systems-tooling",
-  "security-research",
-  "reverse-engineering",
-  "experiments-fieldnotes",
-] as const;
+import { APPROVED_TOPICS } from "./lib/topics";
 
 const articles = defineCollection({
   loader: glob({ pattern: ["**/*.md"], base: "./src/content/articles" }),
@@ -24,7 +19,7 @@ const articles = defineCollection({
       publishedAt: z.coerce.date().optional(),
       updatedAt: z.coerce.date().optional(),
       status: z.enum(["draft", "published"]),
-      topics: z.array(z.enum(approvedTopics)).min(1),
+      topics: z.array(z.enum(APPROVED_TOPICS)).min(1),
       articleType: z
         .enum([
           "tutorial",
@@ -63,6 +58,14 @@ const articles = defineCollection({
             "drafts must not declare publishedAt (draft dates must not leak)",
         });
       }
+      if (article.status === "draft" && article.updatedAt) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["updatedAt"],
+          message:
+            "drafts must not declare updatedAt (draft dates must not leak)",
+        });
+      }
       if (
         article.publishedAt &&
         article.updatedAt &&
@@ -72,6 +75,13 @@ const articles = defineCollection({
           code: "custom",
           path: ["updatedAt"],
           message: "updatedAt must not be earlier than publishedAt",
+        });
+      }
+      if (article.updatedAt && article.updatedAt.getTime() > Date.now()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["updatedAt"],
+          message: "updatedAt must not be in the future",
         });
       }
     }),
