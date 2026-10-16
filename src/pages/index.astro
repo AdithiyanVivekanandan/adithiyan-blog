@@ -4,14 +4,21 @@ import { SITE_DESCRIPTION, SITE_TITLE } from "../consts";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { filterByTopic } from "../lib/article-policy";
 import { getPublishedArticles } from "../lib/articles";
-import { APPROVED_TOPICS, topicLabel } from "../lib/topics";
+import { APPROVED_TOPICS, topicDescription, topicLabel } from "../lib/topics";
 
 const articles = await getPublishedArticles();
 const [featured, ...rest] = articles;
 const recent = rest.slice(0, 3);
-const topicLinks = APPROVED_TOPICS.filter(
-  (slug) => filterByTopic(articles, slug).length > 0,
-).map((slug) => ({ slug, label: topicLabel(slug) }));
+const regions = APPROVED_TOPICS.map((slug) => {
+  const matches = filterByTopic(articles, slug);
+  return {
+    slug,
+    label: topicLabel(slug),
+    description: topicDescription(slug),
+    count: matches.length,
+  };
+});
+const leadRegion = regions.find((region) => region.count > 0);
 ---
 
 <BaseLayout>
@@ -48,20 +55,47 @@ const topicLinks = APPROVED_TOPICS.filter(
     <p class="empty-state">No articles have been published yet.</p>
   )}
 
-  {topicLinks.length > 0 && (
-    <section aria-labelledby="topics-heading">
-      <h2 id="topics-heading" class="section-heading">
-        Topics
-      </h2>
-      <ul class="topic-links">
-        {topicLinks.map((topic) => (
-          <li>
-            <a href={`/topics/${topic.slug}/`}>{topic.label}</a>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )}
+  <section aria-labelledby="territory-heading">
+    <h2 id="territory-heading" class="section-heading">
+      Territory map
+    </h2>
+    <p class="page-intro">
+      Surveyed regions of this publication. Only regions with published notes
+      link onward.
+    </p>
+    <ul class="territory-map">
+      {regions.map((region) => (
+        <li
+          class={
+            "territory" +
+            (leadRegion && region.slug === leadRegion.slug
+              ? " territory--lead"
+              : "") +
+            (region.count === 0 ? " territory--empty" : "")
+          }
+        >
+          <h3 class="territory__name">
+            {region.count > 0 ? (
+              <a href={`/topics/${region.slug}/`}>{region.label}</a>
+            ) : (
+              region.label
+            )}
+          </h3>
+          <p class="territory__scope">{region.description}</p>
+          {region.count > 0 ? (
+            <p class="territory__count">
+              <a href={`/topics/${region.slug}/`}>
+                {region.count}{" "}
+                {region.count === 1 ? "field note" : "field notes"}
+              </a>
+            </p>
+          ) : (
+            <p class="territory__count">Surveyed — no field notes yet</p>
+          )}
+        </li>
+      ))}
+    </ul>
+  </section>
 
   <p class="view-all">
     <a href="/articles/">All articles</a>
