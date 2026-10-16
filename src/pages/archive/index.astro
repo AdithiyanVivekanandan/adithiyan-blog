@@ -1,0 +1,48 @@
+---
+import ArticleCard from "../../components/ArticleCard.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { groupArticlesByYear } from "../../lib/article-policy";
+import { getPublishedArticles } from "../../lib/articles";
+
+const years = groupArticlesByYear(await getPublishedArticles());
+---
+
+<BaseLayout
+  title="Archive"
+  description="Chronological archive of every published Technical Fieldnotes article, grouped by year."
+>
+  <h1 class="page-title">Archive</h1>
+  <p class="page-intro">
+    All published articles, grouped by year, newest first.
+  </p>
+
+  {years.length > 0 ? (
+    <div class="archive">
+      {years.length > 1 && (
+        <nav class="archive__jump" aria-label="Jump to year">
+          <ul>
+            {years.map(({ year }) => (
+              <li>
+                <a href={`#year-${year}`}>{year}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+      {years.map(({ year, articles }) => (
+        <section class="archive__year" aria-labelledby={`year-${year}`}>
+          <h2 id={`year-${year}`} class="section-heading">
+            {year}
+          </h2>
+          <ul class="article-list">
+            {articles.map((article) => (
+              <ArticleCard article={article} headingLevel={3} />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  ) : (
+    <p class="empty-state">No articles have been published yet.</p>
+  )}
+</BaseLayout>

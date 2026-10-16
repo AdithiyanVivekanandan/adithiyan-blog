@@ -8,7 +8,12 @@ interface Props {
 
 const { currentPath } = Astro.props;
 
-const navItems = [{ href: "/articles/", label: "Articles" }];
+const navItems = [
+  { href: "/articles/", label: "Articles" },
+  { href: "/topics/", label: "Topics" },
+  { href: "/archive/", label: "Archive" },
+  { href: "/about/", label: "About" },
+];
 
 const isCurrent = (href: string) => currentPath === href;
 ---

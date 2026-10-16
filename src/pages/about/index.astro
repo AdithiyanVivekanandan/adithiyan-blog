@@ -1,0 +1,44 @@
+---
+import { AUTHOR, SITE_TITLE } from "../../consts";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  APPROVED_TOPICS,
+  topicDescription,
+  topicLabel,
+} from "../../lib/topics";
+---
+
+<BaseLayout
+  title="About"
+  description={`About ${SITE_TITLE}: a personal technical publication about understanding systems, written and maintained by ${AUTHOR}`}
+>
+  <h1 class="page-title">About</h1>
+
+  <div class="about-prose">
+    <p>
+      {SITE_TITLE} is a personal technical publication about understanding
+      systems. It is written and maintained by {AUTHOR}
+    </p>
+
+    <h2>Subject areas</h2>
+    <p>
+      Every article belongs to at least one of a fixed set of subject areas:
+    </p>
+    <ul>
+      {APPROVED_TOPICS.map((slug) => (
+        <li>
+          <a href={`/topics/${slug}/`}>{topicLabel(slug)}</a> —{" "}
+          {topicDescription(slug)}
+        </li>
+      ))}
+    </ul>
+
+    <h2>How articles are written</h2>
+    <p>
+      Each article states the technical context it was verified in, the evidence
+      or commands it relies on, and its known limitations. A material update
+      adds an updated date on the article itself. Articles end with references
+      to primary sources where relevant.
+    </p>
+  </div>
+</BaseLayout>

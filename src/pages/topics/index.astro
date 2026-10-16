@@ -1,0 +1,47 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { filterByTopic } from "../../lib/article-policy";
+import { getPublishedArticles } from "../../lib/articles";
+import {
+  APPROVED_TOPICS,
+  topicDescription,
+  topicLabel,
+} from "../../lib/topics";
+
+const live = await getPublishedArticles();
+const directory = APPROVED_TOPICS.map((slug) => ({
+  slug,
+  label: topicLabel(slug),
+  description: topicDescription(slug),
+  count: filterByTopic(live, slug).length,
+})).filter((topic) => topic.count > 0);
+---
+
+<BaseLayout
+  title="Topics"
+  description="Subject areas covered by Technical Fieldnotes, with published article counts."
+>
+  <h1 class="page-title">Topics</h1>
+  <p class="page-intro">
+    Subject areas covered by this publication, with the number of published
+    articles in each.
+  </p>
+
+  {directory.length > 0 ? (
+    <ul class="topic-directory">
+      {directory.map((topic) => (
+        <li class="topic-directory__item">
+          <h2 class="topic-directory__label">
+            <a href={`/topics/${topic.slug}/`}>{topic.label}</a>
+          </h2>
+          <p class="topic-directory__description">{topic.description}</p>
+          <p class="topic-directory__count">
+            {topic.count} {topic.count === 1 ? "article" : "articles"}
+          </p>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty-state">No topics have published articles yet.</p>
+  )}
+</BaseLayout>

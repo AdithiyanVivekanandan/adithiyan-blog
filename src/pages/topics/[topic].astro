@@ -1,0 +1,51 @@
+---
+import ArticleCard from "../../components/ArticleCard.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { filterByTopic } from "../../lib/article-policy";
+import { getPublishedArticles } from "../../lib/articles";
+import {
+  APPROVED_TOPICS,
+  topicDescription,
+  topicLabel,
+  type TopicSlug,
+} from "../../lib/topics";
+
+export async function getStaticPaths() {
+  return APPROVED_TOPICS.map((topic) => ({ params: { topic } }));
+}
+
+const topic = Astro.params.topic as TopicSlug;
+const label = topicLabel(topic);
+const description = topicDescription(topic);
+const articles = filterByTopic(await getPublishedArticles(), topic);
+---
+
+<BaseLayout title={label} description={description}>
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <ol>
+      <li>
+        <a href="/">Home</a>
+      </li>
+      <li>
+        <a href="/topics/">Topics</a>
+      </li>
+      <li aria-current="page">{label}</li>
+    </ol>
+  </nav>
+
+  <h1 class="page-title">{label}</h1>
+  <p class="page-intro">{description}</p>
+
+  {articles.length > 0 ? (
+    <ul class="article-list article-list--index">
+      {articles.map((article) => (
+        <ArticleCard article={article} headingLevel={2} />
+      ))}
+    </ul>
+  ) : (
+    <p class="empty-state">
+      No articles have been published in this topic yet.{" "}
+      <a href="/articles/">Browse all articles</a>.
+    </p>
+  )}
+</BaseLayout>

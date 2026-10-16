@@ -7,6 +7,7 @@ import {
   filterByTopic,
   getAdjacentArticles,
   getRelatedArticles,
+  groupArticlesByYear,
   isLiveArticle,
 } from "../src/lib/article-policy.ts";
 
@@ -203,4 +204,57 @@ test("filterByTopic returns only articles carrying the topic", () => {
     ["a", "c"],
   );
   assert.deepEqual(filterByTopic([a, b, c], "ai-engineering"), []);
+});
+
+test("groupArticlesByYear groups by UTC year, newest year first", () => {
+  const a = article("a", { publishedAt: new Date("2026-03-01T00:00:00Z") });
+  const b = article("b", { publishedAt: new Date("2025-12-31T23:59:59Z") });
+  const c = article("c", { publishedAt: new Date("2026-01-15T00:00:00Z") });
+  const undated = article("undated", { publishedAt: undefined });
+
+  const groups = groupArticlesByYear([a, b, c, undated]);
+  assert.deepEqual(
+    groups.map((group) => group.year),
+    [2026, 2025],
+    "years must be newest first and undated entries skipped",
+  );
+  assert.deepEqual(
+    groups[0].articles.map((entry) => entry.data.slug),
+    ["a", "c"],
+    "within-year order must follow the input (already deterministic)",
+  );
+  assert.deepEqual(
+    groups[1].articles.map((entry) => entry.data.slug),
+    ["b"],
+  );
+});
+
+test("groupArticlesByYear returns no groups for an empty archive", () => {
+  assert.deepEqual(groupArticlesByYear([]), []);
+});
+
+test("year grouping combined with live filtering excludes future articles", () => {
+  const now = new Date("2026-06-15T12:00:00Z");
+  const live = article("live", {
+    publishedAt: new Date("2026-01-01T00:00:00Z"),
+  });
+  const future = article("future", {
+    publishedAt: new Date("2099-06-01T00:00:00Z"),
+  });
+  const draft = article("draft", {
+    status: "draft",
+    publishedAt: new Date("2026-02-01T00:00:00Z"),
+  });
+  const visible = [live, future, draft].filter((entry) =>
+    isLiveArticle(entry, now),
+  );
+  const groups = groupArticlesByYear(visible);
+  assert.deepEqual(
+    groups.map((group) => group.year),
+    [2026],
+  );
+  assert.deepEqual(
+    groups[0].articles.map((entry) => entry.data.slug),
+    ["live"],
+  );
 });

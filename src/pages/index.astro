@@ -2,11 +2,16 @@
 import ArticleCard from "../components/ArticleCard.astro";
 import { SITE_DESCRIPTION, SITE_TITLE } from "../consts";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { filterByTopic } from "../lib/article-policy";
 import { getPublishedArticles } from "../lib/articles";
+import { APPROVED_TOPICS, topicLabel } from "../lib/topics";
 
 const articles = await getPublishedArticles();
 const [featured, ...rest] = articles;
 const recent = rest.slice(0, 3);
+const topicLinks = APPROVED_TOPICS.filter(
+  (slug) => filterByTopic(articles, slug).length > 0,
+).map((slug) => ({ slug, label: topicLabel(slug) }));
 ---
 
 <BaseLayout>
@@ -41,6 +46,21 @@ const recent = rest.slice(0, 3);
 
   {articles.length === 0 && (
     <p class="empty-state">No articles have been published yet.</p>
+  )}
+
+  {topicLinks.length > 0 && (
+    <section aria-labelledby="topics-heading">
+      <h2 id="topics-heading" class="section-heading">
+        Topics
+      </h2>
+      <ul class="topic-links">
+        {topicLinks.map((topic) => (
+          <li>
+            <a href={`/topics/${topic.slug}/`}>{topic.label}</a>
+          </li>
+        ))}
+      </ul>
+    </section>
   )}
 
   <p class="view-all">

@@ -3,30 +3,6 @@
   margin-inline: auto;
 }
 
-.article__breadcrumb {
-  margin-bottom: var(--space-5);
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-}
-
-.article__breadcrumb ol {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  padding: 0;
-  list-style: none;
-}
-
-.article__breadcrumb li:not(:last-child)::after {
-  content: "/";
-  margin-inline-start: var(--space-2);
-  color: var(--color-border);
-}
-
-.article__breadcrumb [aria-current="page"] {
-  color: var(--color-text-primary);
-}
-
 .article__topic {
   margin-bottom: var(--space-3);
 }

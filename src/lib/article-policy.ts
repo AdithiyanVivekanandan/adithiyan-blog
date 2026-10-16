@@ -96,3 +96,28 @@ export function filterByTopic<A extends ArticleLike>(
     return topics.includes(topic);
   });
 }
+
+export interface YearGroup<A extends ArticleLike> {
+  year: number;
+  articles: A[];
+}
+
+export function groupArticlesByYear<A extends ArticleLike>(
+  articles: readonly A[],
+): YearGroup<A>[] {
+  const byYear = new Map<number, A[]>();
+  for (const article of articles) {
+    const publishedAt = article.data.publishedAt;
+    if (!publishedAt) continue;
+    const year = publishedAt.getUTCFullYear();
+    const bucket = byYear.get(year);
+    if (bucket) {
+      bucket.push(article);
+    } else {
+      byYear.set(year, [article]);
+    }
+  }
+  return [...byYear.entries()]
+    .sort(([yearA], [yearB]) => yearB - yearA)
+    .map(([year, group]) => ({ year, articles: group }));
+}
