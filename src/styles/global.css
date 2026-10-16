@@ -200,7 +200,9 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
 }
 
 main {
-  padding-block: var(--space-7) var(--space-9);
+  width: min(100% - 2 * var(--gutter), var(--container-max));
+  margin-inline: auto;
+  padding-block: var(--space-8) var(--space-10);
 }
 
 .page-title {
@@ -218,6 +220,8 @@ main {
 
 .masthead {
   max-width: 46rem;
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .masthead h1 {
@@ -242,7 +246,7 @@ main {
 }
 
 .view-all {
-  margin-top: var(--space-5);
+  margin-top: var(--space-6);
 }
 
 .author-note {
@@ -265,7 +269,7 @@ main {
 }
 
 .article-card {
-  padding-block: var(--space-5);
+  padding-block: var(--space-6);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -294,14 +298,14 @@ main {
 
 .article-card__summary {
   max-width: 65ch;
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .article-card__meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
-  margin-top: var(--space-3);
+  margin-top: var(--space-4);
   color: var(--color-text-secondary);
   font-size: 0.875rem;
   line-height: 1.5;

@@ -91,14 +91,14 @@ const jsonLd = {
       <p class="article__meta">
         <span>By {AUTHOR}</span>
         <span>
-          Published
+          Published{" "}
           <time datetime={isoDateOnly(publishedAt)}>
             {formatArticleDate(publishedAt)}
           </time>
         </span>
         {data.updatedAt && (
           <span>
-            Updated
+            Updated{" "}
             <time datetime={isoDateOnly(data.updatedAt)}>
               {formatArticleDate(data.updatedAt)}
             </time>
