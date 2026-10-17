@@ -91,6 +91,7 @@ const jsonLd = {
         </span>
       </p>
       <h1 class="article__title">{data.title}</h1>
+      {data.subtitle && <p class="article__subtitle">{data.subtitle}</p>}
       <p class="article__summary">{data.description}</p>
       <p class="article__meta">
         <span>By {AUTHOR}</span>

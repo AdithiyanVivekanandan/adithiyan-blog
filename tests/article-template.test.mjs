@@ -245,8 +245,8 @@ test("the isolated build never touches the production dist", () => {
   const entries = readdirSync(join(distDir, "articles"));
   assert.deepEqual(
     entries.sort(),
-    ["index.html"],
-    "production articles/ must still be the honest empty directory",
+    ["index.html", "understanding-windows-executables"],
+    "production articles/ lists exactly the published article routes",
   );
 });
 
@@ -255,6 +255,11 @@ test("articles index lists the published article newest-first", () => {
   assert.ok(
     html.includes('href="/articles/temp-integration-published-note/"'),
     "article card present in the index",
+  );
+  assert.ok(
+    html.indexOf('href="/articles/understanding-windows-executables/"') <
+      html.indexOf('href="/articles/temp-integration-published-note/"'),
+    "the newest article is listed first",
   );
   assert.ok(
     !html.includes("No articles have been published yet."),
@@ -448,40 +453,52 @@ test("copy-code control stays progressive and announces success accessibly", () 
   );
 });
 
-test("a lone published article correctly omits pager and related sections", () => {
+test("pager and related sections render once two articles are published", () => {
   const html = readBuilt(`articles/${SLUG}/index.html`);
   assert.ok(
-    !html.includes('aria-label="Previous and next articles"'),
-    "no pager with a single article",
+    html.includes('aria-label="Previous and next articles"'),
+    "pager appears when a neighbour article exists",
   );
   assert.ok(
-    !html.includes('id="related-heading"'),
-    "no related section when nothing related exists",
+    html.includes('id="related-heading"'),
+    "related section appears for articles sharing a topic",
+  );
+  assert.ok(
+    html.includes('href="/articles/understanding-windows-executables/"'),
+    "the related or pager sections link the other published article",
   );
 });
 
-test("RSS feed contains exactly one item with stable links and dates", () => {
+test("RSS feed contains both published articles with stable links and dates", () => {
   const xml = readBuilt("rss.xml");
-  assert.equal((xml.match(/<item>/g) ?? []).length, 1);
-  assert.ok(xml.includes("<pubDate>"), "item carries a publication date");
-  assert.ok(
-    xml.includes(`<link>${SITE}/articles/${SLUG}/</link>`),
-    "item links the canonical article URL",
-  );
+  assert.equal((xml.match(/<item>/g) ?? []).length, 2);
+  assert.ok(xml.includes("<pubDate>"), "items carry publication dates");
+  for (const slug of [SLUG, "understanding-windows-executables"]) {
+    assert.ok(
+      xml.includes(`<link>${SITE}/articles/${slug}/</link>`),
+      `feed lists ${slug} with its canonical URL`,
+    );
+  }
   assert.ok(xml.includes("<lastBuildDate>"), "channel freshness present");
   for (const marker of DRAFT_MARKERS) {
     assert.ok(!xml.includes(marker), `feed must not contain ${marker}`);
   }
 });
 
-test("sitemap lists the article route, lastmod and the non-empty topics", () => {
+test("sitemap lists the article routes, lastmod and the non-empty topics", () => {
   const xml = readBuilt("sitemap.xml");
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-  assert.ok(
-    locs.includes(`${SITE}/articles/${SLUG}/`),
-    "article route in the sitemap",
-  );
-  for (const slug of ["systems-tooling", "ai-engineering"]) {
+  for (const slug of [SLUG, "understanding-windows-executables"]) {
+    assert.ok(
+      locs.includes(`${SITE}/articles/${slug}/`),
+      `article route ${slug} in the sitemap`,
+    );
+  }
+  for (const slug of [
+    "systems-tooling",
+    "ai-engineering",
+    "reverse-engineering",
+  ]) {
     assert.ok(
       locs.includes(`${SITE}/topics/${slug}/`),
       `non-empty topic ${slug} appears in the sitemap`,
@@ -491,15 +508,26 @@ test("sitemap lists the article route, lastmod and the non-empty topics", () => 
     locs.includes(`${SITE}/topics/`) && locs.includes(`${SITE}/search/`),
     "directory and search routes still listed",
   );
+  const escapedSite = SITE.replace(/\./g, "\\.");
   const articleBlock = xml.match(
     new RegExp(
-      `<url>\\s*<loc>${SITE.replace(/\./g, "\\.")}/articles/${SLUG}/</loc>[\\s\\S]*?</url>`,
+      `<url>\\s*<loc>${escapedSite}/articles/${SLUG}/</loc>[\\s\\S]*?</url>`,
     ),
   )?.[0];
-  assert.ok(articleBlock, "article entry present");
+  assert.ok(articleBlock, "fixture article entry present");
   assert.ok(
     articleBlock.includes("<lastmod>2026-06-01</lastmod>"),
-    "lastmod equals the publication date",
+    "fixture lastmod equals the publication date",
+  );
+  const realBlock = xml.match(
+    new RegExp(
+      `<url>\\s*<loc>${escapedSite}/articles/understanding-windows-executables/</loc>[\\s\\S]*?</url>`,
+    ),
+  )?.[0];
+  assert.ok(realBlock, "published article entry present");
+  assert.ok(
+    realBlock.includes("<lastmod>2026-10-17</lastmod>"),
+    "published article lastmod equals its publication date",
   );
 });
 
@@ -507,14 +535,15 @@ test("homepage switches to populated layout: featured, recent and lead region", 
   const html = readBuilt("index.html");
   assert.ok(html.includes("Featured"), "featured section present");
   assert.ok(
-    html.includes('href="/articles/temp-integration-published-note/"'),
-    "featured article links its route",
+    html.indexOf('href="/articles/understanding-windows-executables/"') <
+      html.indexOf('href="/articles/temp-integration-published-note/"'),
+    "the newest article is featured with the older one following",
   );
   assert.ok(html.includes("territory--lead"), "lead region exists");
   assert.equal(
     (html.match(/Surveyed — no field notes yet/g) ?? []).length,
-    3,
-    "the three empty regions still report honestly",
+    2,
+    "the two empty regions still report honestly",
   );
   const counts = [
     ...html.matchAll(
@@ -523,16 +552,16 @@ test("homepage switches to populated layout: featured, recent and lead region", 
   ];
   assert.equal(
     counts.length,
-    2,
-    "two populated regions expose their count links",
+    3,
+    "three populated regions expose their count links",
   );
   const texts = counts.map((match) =>
     collapseWhitespace(match[2]).toLowerCase(),
   );
   assert.deepEqual(
     texts.sort(),
-    ["1 field note", "1 field note"],
-    "count links read like sentences with singular grammar",
+    ["1 field note", "1 field note", "2 field notes"],
+    "count links read like sentences with correct plural grammar",
   );
   assert.ok(
     !html.includes("No articles have been published yet."),
@@ -542,15 +571,25 @@ test("homepage switches to populated layout: featured, recent and lead region", 
 
 test("topics index counts articles and topic pages list them", () => {
   const directory = readBuilt("topics/index.html");
+  const directoryText = collapseWhitespace(directory);
   assert.ok(
-    /1\s+article\b/.test(collapseWhitespace(directory)),
-    "directory count updated to 1 article",
+    /2\s+articles\b/.test(directoryText),
+    "directory count shows the two-article topic",
   );
   assert.ok(
-    directory.includes('href="/topics/systems-tooling/"') &&
-      directory.includes('href="/topics/ai-engineering/"'),
-    "both non-empty topics listed",
+    /1\s+article\b/.test(directoryText),
+    "single-article topics keep singular grammar",
   );
+  for (const slug of [
+    "systems-tooling",
+    "ai-engineering",
+    "reverse-engineering",
+  ]) {
+    assert.ok(
+      directory.includes(`href="/topics/${slug}/"`),
+      `non-empty topic ${slug} listed`,
+    );
+  }
   assert.ok(
     !directory.includes('href="/topics/security-research/"'),
     "empty topics stay hidden from the directory",
@@ -559,9 +598,14 @@ test("topics index counts articles and topic pages list them", () => {
     const page = readBuilt(`topics/${slug}/index.html`);
     assert.ok(
       page.includes('href="/articles/temp-integration-published-note/"'),
-      `${slug} links its article`,
+      `${slug} links its fixture article`,
     );
   }
+  const reverse = readBuilt("topics/reverse-engineering/index.html");
+  assert.ok(
+    reverse.includes('href="/articles/understanding-windows-executables/"'),
+    "reverse-engineering links the published article",
+  );
   const empty = readBuilt("topics/security-research/index.html");
   assert.ok(
     empty.includes("No articles have been published in this topic yet"),
@@ -582,7 +626,11 @@ test("archive groups the article under its publication year", () => {
   );
   assert.ok(
     html.includes('href="/articles/temp-integration-published-note/"'),
-    "article card listed under its year",
+    "fixture article card listed under its year",
+  );
+  assert.ok(
+    html.includes('href="/articles/understanding-windows-executables/"'),
+    "published article card listed under its year",
   );
   assert.ok(
     !html.includes("No articles have been published yet."),
@@ -590,17 +638,23 @@ test("archive groups the article under its publication year", () => {
   );
 });
 
-test("search index exposes exactly the published article", () => {
+test("search index exposes exactly the published articles, newest first", () => {
   const payload = JSON.parse(readBuilt("search-index.json"));
-  assert.equal(payload.articles.length, 1, "only the published article");
-  const entry = payload.articles[0];
-  assert.equal(entry.slug, SLUG);
-  assert.equal(entry.title, TITLE);
-  assert.deepEqual(entry.topics, [
+  assert.deepEqual(
+    payload.articles.map((entry) => entry.slug),
+    ["understanding-windows-executables", SLUG],
+    "both published articles in newest-first order",
+  );
+  const real = payload.articles[0];
+  assert.equal(real.title, "Understanding Windows Executables");
+  assert.equal(real.date, "2026-10-17");
+  const fixture = payload.articles[1];
+  assert.equal(fixture.title, TITLE);
+  assert.deepEqual(fixture.topics, [
     topicLabel("systems-tooling"),
     topicLabel("ai-engineering"),
   ]);
-  assert.equal(entry.date, "2026-06-01");
+  assert.equal(fixture.date, "2026-06-01");
   for (const marker of DRAFT_MARKERS) {
     assert.ok(!JSON.stringify(payload).includes(marker), `no ${marker}`);
   }

@@ -14,6 +14,14 @@
   line-height: var(--leading-heading);
 }
 
+.article__subtitle {
+  max-width: 55ch;
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
 .article__summary {
   max-width: 55ch;
   margin-top: var(--space-4);

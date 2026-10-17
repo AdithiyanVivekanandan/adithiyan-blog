@@ -78,23 +78,17 @@ test("removed sample article leaves no route or references behind", () => {
   }
 });
 
-test("empty publication shows honest empty states and no article links", () => {
+test("homepage and index surface the published article, never excluded content", () => {
   for (const url of [homepageUrl, articlesIndexUrl]) {
     const html = readBuild(url);
     assert.ok(
-      html.includes("No articles have been published yet."),
-      `${url.pathname} must show the honest empty state`,
+      !html.includes("No articles have been published yet."),
+      `${url.pathname} must not show the empty state once an article exists`,
     );
-    const detailHrefs = [
-      ...html.matchAll(/<a\s[^>]*href="(\/articles\/[^"#]*)"/g),
-    ].map((match) => match[1]);
-    for (const href of detailHrefs) {
-      assert.equal(
-        href,
-        "/articles/",
-        `${url.pathname} must not link any article detail page, found ${href}`,
-      );
-    }
+    assert.ok(
+      html.includes('href="/articles/understanding-windows-executables/"'),
+      `${url.pathname} must link the published article`,
+    );
     for (const marker of [DRAFT_SLUG, FUTURE_SLUG]) {
       assert.ok(
         !html.includes(marker),

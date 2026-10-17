@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { topicLabel } from "../src/lib/topics.ts";
+
 const distDir = fileURLToPath(new URL("../dist", import.meta.url));
 
 const DRAFT_SLUG = "draft-fixture-leaked-token";
@@ -35,15 +37,24 @@ test("search index endpoint publishes valid JSON using published content only", 
   assert.ok(Array.isArray(payload.articles), "index exposes an articles array");
   assert.equal(
     payload.articles.length,
-    0,
-    "an empty publication must produce an empty search index",
+    1,
+    "exactly the published article appears in the index",
   );
+  const [entry] = payload.articles;
+  assert.equal(entry.slug, "understanding-windows-executables");
+  assert.equal(entry.title, "Understanding Windows Executables");
+  assert.deepEqual(entry.topics, [
+    topicLabel("reverse-engineering"),
+    topicLabel("systems-tooling"),
+  ]);
+  assert.equal(entry.date, "2026-10-17");
   assert.ok(
     !payload.articles.some(
-      (entry) =>
-        MARKER_TITLES.includes(entry.title) ||
-        MARKERS.includes(entry.slug) ||
-        (typeof entry.date === "string" && entry.date.startsWith("2099")),
+      (candidate) =>
+        MARKER_TITLES.includes(candidate.title) ||
+        MARKERS.includes(candidate.slug) ||
+        (typeof candidate.date === "string" &&
+          candidate.date.startsWith("2099")),
     ),
     "draft and scheduled fixtures must not enter the index",
   );

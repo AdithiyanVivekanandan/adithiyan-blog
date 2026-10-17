@@ -55,11 +55,22 @@ test("rss.xml is valid RSS 2.0 using the configured site URL", () => {
   }
 });
 
-test("rss.xml lists no items while unpublished", () => {
+test("rss.xml lists the published article with its canonical link", () => {
   const xml = readDist("rss.xml");
   const items = xml.match(/<item>/g) ?? [];
-  assert.equal(items.length, 0, "no published articles means no feed items");
-  assert.ok(!xml.includes("<pubDate>"), "no dates without items");
+  assert.equal(items.length, 1, "one published article means one feed item");
+  assert.ok(
+    xml.includes(
+      `<link>${SITE}/articles/understanding-windows-executables/</link>`,
+    ),
+    "item links the canonical article URL",
+  );
+  assert.match(
+    xml,
+    /<pubDate>Sat, 17 Oct 2026 20:00:00 GMT<\/pubDate>/,
+    "item carries the publication date",
+  );
+  assert.ok(xml.includes("<lastBuildDate>"), "channel freshness present");
   assert.ok(!xml.includes("2099"), "future-dated year must not appear");
 });
 
@@ -78,20 +89,33 @@ test("sitemap.xml lists exactly the public routes", () => {
     `${SITE}/about/`,
     `${SITE}/archive/`,
     `${SITE}/articles/`,
+    `${SITE}/articles/understanding-windows-executables/`,
     `${SITE}/colophon/`,
     `${SITE}/search/`,
     `${SITE}/topics/`,
+    `${SITE}/topics/reverse-engineering/`,
+    `${SITE}/topics/systems-tooling/`,
   ]);
 
-  assert.ok(
-    !locs.some((loc) => loc.includes("ai-engineering")),
-    "empty topic excluded",
-  );
+  for (const slug of [
+    "ai-engineering",
+    "security-research",
+    "experiments-fieldnotes",
+  ]) {
+    assert.ok(
+      !locs.some((loc) => loc.includes(slug)),
+      `empty topic ${slug} excluded`,
+    );
+  }
   assert.ok(!locs.some((loc) => loc.includes("404")), "404 excluded");
   for (const marker of MARKERS) {
     assert.ok(!xml.includes(marker), `sitemap must not contain ${marker}`);
   }
-  assert.ok(!xml.includes("<lastmod>"), "no dates without articles");
+  assert.deepEqual(
+    [...xml.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1]),
+    ["2026-10-17"],
+    "lastmod appears only for the article, set to its publication date",
+  );
 });
 
 test("robots.txt allows crawling and points at the sitemap", () => {

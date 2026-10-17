@@ -8,6 +8,12 @@ import { APPROVED_TOPICS } from "../src/lib/topics.ts";
 
 const distDir = fileURLToPath(new URL("../dist", import.meta.url));
 
+const PUBLISHED_TOPICS = ["reverse-engineering", "systems-tooling"];
+
+const EMPTY_TOPICS = APPROVED_TOPICS.filter(
+  (slug) => !PUBLISHED_TOPICS.includes(slug),
+);
+
 const MARKERS = [
   "draft-canary-7f2e91",
   "draft-fixture-leaked-token",
@@ -41,16 +47,24 @@ function distHasRoute(href) {
   return existsSync(direct) && statSync(direct).isFile();
 }
 
-test("topic index hides the empty directory honestly", () => {
+test("topic index lists only topics with published articles", () => {
   const html = readPage("topics/index.html");
   assert.ok(
-    html.includes("No topics have published articles yet."),
-    "empty directory explains itself",
+    !html.includes("No topics have published articles yet."),
+    "empty directory state must be gone once a topic has articles",
   );
-  assert.ok(
-    !html.includes('href="/topics/systems-tooling/"'),
-    "no topic links while the publication is empty",
-  );
+  for (const slug of PUBLISHED_TOPICS) {
+    assert.ok(
+      html.includes(`href="/topics/${slug}/"`),
+      `populated topic ${slug} must be listed`,
+    );
+  }
+  for (const slug of EMPTY_TOPICS) {
+    assert.ok(
+      !html.includes(`href="/topics/${slug}/"`),
+      `empty topic ${slug} must stay hidden from the directory`,
+    );
+  }
 });
 
 test("every approved topic has a generated page and unknown topics do not", () => {
@@ -66,8 +80,8 @@ test("every approved topic has a generated page and unknown topics do not", () =
   );
 });
 
-test("topic pages show an honest empty state while unpublished", () => {
-  for (const slug of ["systems-tooling", "ai-engineering"]) {
+test("topic pages list their articles or explain their emptiness", () => {
+  for (const slug of EMPTY_TOPICS) {
     const html = readPage(`topics/${slug}/index.html`);
     assert.ok(
       html.includes("No articles have been published in this topic yet"),
@@ -78,17 +92,32 @@ test("topic pages show an honest empty state while unpublished", () => {
       `${slug} keeps its breadcrumb`,
     );
   }
+  for (const slug of PUBLISHED_TOPICS) {
+    const html = readPage(`topics/${slug}/index.html`);
+    assert.ok(
+      html.includes('href="/articles/understanding-windows-executables/"'),
+      `${slug} links its published article`,
+    );
+    assert.ok(
+      !html.includes("No articles have been published in this topic yet"),
+      `${slug} no longer shows the empty state`,
+    );
+  }
 });
 
-test("archive shows the honest empty state while unpublished", () => {
+test("archive groups the published article under its year", () => {
   const html = readPage("archive/index.html");
   assert.ok(
-    html.includes("No articles have been published yet."),
-    "empty archive explains itself",
+    !html.includes("No articles have been published yet."),
+    "archive empty state must be gone once an article exists",
+  );
+  assert.ok(html.includes('id="year-2026"'), "2026 year section present");
+  assert.ok(
+    html.includes('href="/articles/understanding-windows-executables/"'),
+    "article card listed under its year",
   );
   assert.ok(!html.includes("2099"), "future year must not appear");
   assert.ok(!html.includes("year-2099"), "no future year anchor");
-  assert.ok(!html.includes('id="year-'), "no year sections while empty");
 });
 
 test("about page uses the established identity and links subject areas", () => {
@@ -103,15 +132,17 @@ test("about page uses the established identity and links subject areas", () => {
   }
 });
 
-test("homepage offers no per-topic links while unpublished", () => {
+test("homepage links only populated topic regions", () => {
   const html = readPage("index.html");
-  const topicHrefs = [...html.matchAll(/href="(\/topics\/[^"]+)"/g)].map(
-    (match) => match[1],
-  );
+  const topicHrefs = [
+    ...new Set(
+      [...html.matchAll(/href="(\/topics\/[^"]+)"/g)].map((match) => match[1]),
+    ),
+  ].sort();
   assert.deepEqual(
     topicHrefs,
-    [],
-    "homepage must not link topic pages while no articles are published",
+    PUBLISHED_TOPICS.map((slug) => `/topics/${slug}/`).sort(),
+    "homepage links exactly the populated regions",
   );
 });
 

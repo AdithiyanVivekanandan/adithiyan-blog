@@ -10,6 +10,7 @@ const articles = defineCollection({
   schema: z
     .object({
       title: z.string().trim().min(1).max(120),
+      subtitle: z.string().trim().min(1).max(160).optional(),
       slug: z
         .string()
         .regex(
