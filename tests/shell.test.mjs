@@ -5,10 +5,8 @@ import { test } from "node:test";
 const pages = [
   new URL("../dist/index.html", import.meta.url),
   new URL("../dist/articles/index.html", import.meta.url),
-  new URL(
-    "../dist/articles/repeatable-release-check-npm-node-test/index.html",
-    import.meta.url,
-  ),
+  new URL("../dist/search/index.html", import.meta.url),
+  new URL("../dist/colophon/index.html", import.meta.url),
 ];
 
 function readPage(url) {

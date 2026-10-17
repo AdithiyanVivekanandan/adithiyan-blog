@@ -18,10 +18,11 @@ const MARKERS = [
 const publicPages = [
   "index.html",
   "articles/index.html",
-  "articles/repeatable-release-check-npm-node-test/index.html",
   "topics/index.html",
   "archive/index.html",
   "about/index.html",
+  "search/index.html",
+  "colophon/index.html",
   ...APPROVED_TOPICS.map((slug) => `topics/${slug}/index.html`),
 ];
 
@@ -40,17 +41,15 @@ function distHasRoute(href) {
   return existsSync(direct) && statSync(direct).isFile();
 }
 
-test("topic index lists only topics with live articles and correct counts", () => {
+test("topic index hides the empty directory honestly", () => {
   const html = readPage("topics/index.html");
-  assert.ok(html.includes("Systems &amp; Tooling"), "non-empty topic listed");
   assert.ok(
-    html.includes('href="/topics/systems-tooling/"'),
-    "topic index links the topic page",
+    html.includes("No topics have published articles yet."),
+    "empty directory explains itself",
   );
-  assert.ok(html.includes("1 article"), "singular count for one article");
   assert.ok(
-    !html.includes('href="/topics/ai-engineering/"'),
-    "empty topics must be hidden from the directory",
+    !html.includes('href="/topics/systems-tooling/"'),
+    "no topic links while the publication is empty",
   );
 });
 
@@ -67,34 +66,29 @@ test("every approved topic has a generated page and unknown topics do not", () =
   );
 });
 
-test("topic pages list live articles or show an honest empty state", () => {
-  const populated = readPage("topics/systems-tooling/index.html");
-  assert.ok(
-    populated.includes("repeatable-release-check-npm-node-test"),
-    "topic page lists its live article",
-  );
-  assert.ok(populated.includes('aria-current="page"'), "breadcrumb present");
-
-  const empty = readPage("topics/ai-engineering/index.html");
-  assert.ok(
-    empty.includes("No articles have been published in this topic yet"),
-    "empty topic explains itself",
-  );
-  assert.ok(
-    !empty.includes("repeatable-release-check-npm-node-test"),
-    "empty topic must not list unrelated articles",
-  );
+test("topic pages show an honest empty state while unpublished", () => {
+  for (const slug of ["systems-tooling", "ai-engineering"]) {
+    const html = readPage(`topics/${slug}/index.html`);
+    assert.ok(
+      html.includes("No articles have been published in this topic yet"),
+      `${slug} explains itself while empty`,
+    );
+    assert.ok(
+      html.includes('aria-current="page"'),
+      `${slug} keeps its breadcrumb`,
+    );
+  }
 });
 
-test("archive groups live articles by year and excludes future dates", () => {
+test("archive shows the honest empty state while unpublished", () => {
   const html = readPage("archive/index.html");
-  assert.ok(html.includes('id="year-2026"'), "current year section exists");
   assert.ok(
-    html.includes("repeatable-release-check-npm-node-test"),
-    "archive lists the live article",
+    html.includes("No articles have been published yet."),
+    "empty archive explains itself",
   );
   assert.ok(!html.includes("2099"), "future year must not appear");
   assert.ok(!html.includes("year-2099"), "no future year anchor");
+  assert.ok(!html.includes('id="year-'), "no year sections while empty");
 });
 
 test("about page uses the established identity and links subject areas", () => {
@@ -109,15 +103,16 @@ test("about page uses the established identity and links subject areas", () => {
   }
 });
 
-test("homepage topic entry points resolve to generated routes", () => {
+test("homepage offers no per-topic links while unpublished", () => {
   const html = readPage("index.html");
   const topicHrefs = [...html.matchAll(/href="(\/topics\/[^"]+)"/g)].map(
     (match) => match[1],
   );
-  assert.ok(topicHrefs.length >= 1, "homepage must offer topic entry points");
-  for (const href of topicHrefs) {
-    assert.ok(distHasRoute(href), `homepage topic link ${href} must resolve`);
-  }
+  assert.deepEqual(
+    topicHrefs,
+    [],
+    "homepage must not link topic pages while no articles are published",
+  );
 });
 
 test("every internal navigation link on every public page resolves", () => {
@@ -181,29 +176,4 @@ test("draft and future fixture identifiers stay out of every new public route", 
       );
     }
   }
-});
-
-test("article pages carry a data-driven field-note kicker above the title", () => {
-  const html = readPage(
-    "articles/repeatable-release-check-npm-node-test/index.html",
-  );
-  const topicPara =
-    html.match(/<p class="article__topic">([\s\S]*?)<\/p>/)?.[1] ?? "";
-  assert.ok(
-    topicPara.includes("Field note · Systems &amp; Tooling"),
-    "kicker combines the signature prefix with the article's own topic",
-  );
-  assert.ok(
-    topicPara.includes("article__label"),
-    "kicker reuses the existing label styling",
-  );
-  assert.ok(
-    !topicPara.includes("topic-chip"),
-    "article detail uses the kicker text, not the listing card chip",
-  );
-  const title = html.indexOf('<h1 class="article__title">');
-  assert.ok(
-    html.indexOf("Field note ·") < title && title !== -1,
-    "kicker precedes the article title",
-  );
 });

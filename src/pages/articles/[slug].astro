@@ -5,6 +5,7 @@ import ArticleCard from "../../components/ArticleCard.astro";
 import ArticlePager from "../../components/ArticlePager.astro";
 import ArticleToc from "../../components/ArticleToc.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { articleTypeLabel } from "../../lib/article-type";
 import {
   getAdjacentArticles,
   getRelatedArticles,
@@ -85,7 +86,8 @@ const jsonLd = {
     <header>
       <p class="article__topic">
         <span class="article__label">
-          Field note · {data.topics.map((slug) => topicLabel(slug)).join(" · ")}
+          {articleTypeLabel(data.articleType)} ·{" "}
+          {data.topics.map((slug) => topicLabel(slug)).join(" · ")}
         </span>
       </p>
       <h1 class="article__title">{data.title}</h1>

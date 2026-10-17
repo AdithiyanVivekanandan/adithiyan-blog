@@ -26,6 +26,7 @@ const {
 const fullTitle =
   title === SITE_TITLE ? SITE_TITLE : `${title} — ${SITE_TITLE}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL("/og.png", Astro.site);
 ---
 
 <!doctype html>
@@ -50,6 +51,14 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:site_name" content={SITE_TITLE} />
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="An index card on warm paper, labelled Technical Fieldnotes"
+    />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
@@ -97,6 +106,77 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <main id="main" tabindex="-1">
       <slot />
     </main>
+    <div
+      id="field-note"
+      class="field-note"
+      role="dialog"
+      aria-label="A small field note"
+      hidden
+    >
+      <span class="field-note__stamp" aria-hidden="true">
+        FN—01
+      </span>
+      <p class="field-note__text">
+        You found a note. Every article here began as a small observation like
+        this one — thanks for exploring.
+      </p>
+      <button type="button" class="field-note__close">
+        Close note
+      </button>
+    </div>
     <SiteFooter />
+    <script is:inline>
+      (function () {
+        const card = document.getElementById("field-note");
+        if (!card) return;
+        const closeButton = card.querySelector("button");
+        let lastFocus = null;
+
+        const openNote = function () {
+          if (!card.hidden) return;
+          lastFocus = document.activeElement;
+          card.hidden = false;
+          closeButton.focus();
+        };
+
+        const closeNote = function () {
+          if (card.hidden) return;
+          card.hidden = true;
+          if (lastFocus && typeof lastFocus.focus === "function") {
+            lastFocus.focus();
+          }
+          lastFocus = null;
+        };
+
+        let buffer = "";
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape") {
+            closeNote();
+            return;
+          }
+          if (
+            event.ctrlKey ||
+            event.altKey ||
+            event.metaKey ||
+            event.isComposing
+          ) {
+            return;
+          }
+          const target = event.target;
+          if (
+            target &&
+            (target.closest("input, textarea, select") ||
+              target.isContentEditable)
+          ) {
+            return;
+          }
+          if (event.key && event.key.length === 1) {
+            buffer = (buffer + event.key.toLowerCase()).slice(-4);
+            if (buffer === "note") openNote();
+          }
+        });
+        closeButton.addEventListener("click", closeNote);
+      })();
+    </script>
   </body>
 </html>

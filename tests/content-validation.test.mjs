@@ -108,6 +108,30 @@ topics:
   );
 });
 
+test("unknown articleType values fail content validation", () => {
+  withInvalidFixture(
+    "zz-validation-fixture-bad-type.md",
+    `
+title: "Bad article type"
+slug: "zz-validation-fixture-bad-type"
+description: "A fixture declaring an article type outside the approved set."
+status: published
+publishedAt: 2026-01-01
+topics:
+  - systems-tooling
+articleType: diary
+`,
+    ({ status, output }) => {
+      assert.equal(
+        status,
+        1,
+        "astro sync must fail for an unapproved articleType",
+      );
+      assert.match(output, /Invalid enum option|Invalid option/);
+    },
+  );
+});
+
 test("future updatedAt timestamps fail content validation", () => {
   withInvalidFixture(
     "zz-validation-fixture-future-update.md",

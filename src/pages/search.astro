@@ -1,0 +1,189 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Search"
+  description="Search all published Technical Fieldnotes articles by title, summary and subject area."
+>
+  <h1 class="page-title">Search</h1>
+  <p class="page-intro">
+    Search published articles by title, summary and subject area.
+  </p>
+
+  <form class="search" role="search" method="get" action="/search/">
+    <label class="search__label" for="search-input">
+      Search terms
+    </label>
+    <input
+      id="search-input"
+      name="q"
+      type="search"
+      class="search__input"
+      autocomplete="off"
+      spellcheck="false"
+      maxlength="200"
+    />
+    <button type="submit" class="search__submit">
+      Search
+    </button>
+  </form>
+
+  <noscript>
+    <p class="search__noscript">
+      Searching this site needs JavaScript. You can{" "}
+      <a href="/articles/">browse all articles</a> instead.
+    </p>
+  </noscript>
+
+  <p class="search__status" role="status" hidden></p>
+  <ul class="search__results" hidden></ul>
+
+  <script is:inline>
+    (function () {
+      const input = document.getElementById("search-input");
+      const status = document.querySelector(".search__status");
+      const list = document.querySelector(".search__results");
+      const form = document.querySelector("form.search");
+      if (!input || !status || !list || !form) return;
+
+      let entries = null;
+      const loadIndex = function () {
+        if (entries !== null) return Promise.resolve(entries);
+        return fetch("/search-index.json")
+          .then(function (response) {
+            if (!response.ok) throw new Error("index unavailable");
+            return response.json();
+          })
+          .then(function (payload) {
+            entries = payload.articles;
+            return entries;
+          })
+          .catch(function () {
+            entries = [];
+            status.hidden = false;
+            status.textContent =
+              "Search could not load its index. Refresh the page or browse all articles instead.";
+            return entries;
+          });
+      };
+
+      const tokenize = function (query) {
+        return query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      };
+
+      const score = function (entry, tokens) {
+        const title = entry.title.toLowerCase();
+        const description = entry.description.toLowerCase();
+        const topics = entry.topics.join(" ").toLowerCase();
+        let total = 0;
+        let matched = 0;
+        for (let i = 0; i < tokens.length; i += 1) {
+          const token = tokens[i];
+          let points = 0;
+          if (title.indexOf(token) !== -1) points += 3;
+          if (description.indexOf(token) !== -1) points += 1;
+          if (topics.indexOf(token) !== -1) points += 2;
+          if (points > 0) {
+            matched += 1;
+            total += points;
+          }
+        }
+        return { complete: matched === tokens.length, total: total };
+      };
+
+      const clear = function (element) {
+        while (element.firstChild) element.removeChild(element.firstChild);
+      };
+
+      const formatDate = new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+
+      const showResults = function (query, index) {
+        const tokens = tokenize(query);
+        clear(list);
+        if (tokens.length === 0) {
+          list.hidden = true;
+          status.hidden = false;
+          status.textContent = "Type search terms to find published articles.";
+          return;
+        }
+
+        const results = [];
+        for (let i = 0; i < index.length && results.length < 20; i += 1) {
+          const outcome = score(index[i], tokens);
+          if (outcome.complete) {
+            results.push({ entry: index[i], total: outcome.total });
+          }
+        }
+        results.sort(function (a, b) {
+          return (
+            b.total - a.total || a.entry.title.localeCompare(b.entry.title)
+          );
+        });
+
+        status.hidden = false;
+        if (results.length === 0) {
+          list.hidden = true;
+          status.textContent =
+            'No articles matched "' +
+            query +
+            '". Try shorter terms, or clear the search.';
+          return;
+        }
+
+        for (let j = 0; j < results.length; j += 1) {
+          const entry = results[j].entry;
+          const item = document.createElement("li");
+          item.className = "search__hit";
+          const link = document.createElement("a");
+          link.className = "search__hit-link";
+          link.href = "/articles/" + entry.slug + "/";
+          link.textContent = entry.title;
+          item.appendChild(link);
+          const meta = document.createElement("p");
+          meta.className = "search__hit-meta";
+          meta.textContent = entry.topics.join(" · ");
+          if (entry.date) {
+            meta.textContent += " · " + formatDate.format(new Date(entry.date));
+          }
+          item.appendChild(meta);
+          const summary = document.createElement("p");
+          summary.className = "search__hit-summary";
+          summary.textContent = entry.description;
+          item.appendChild(summary);
+          list.appendChild(item);
+        }
+        list.hidden = false;
+        status.textContent =
+          results.length === 1
+            ? "1 article matched."
+            : results.length + " articles matched.";
+      };
+
+      const run = function (query) {
+        loadIndex().then(function (index) {
+          showResults(query, index);
+        });
+      };
+
+      input.addEventListener("input", function () {
+        run(input.value);
+      });
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        run(input.value);
+      });
+
+      const initial = new URLSearchParams(window.location.search).get("q");
+      if (initial) {
+        input.value = initial;
+        run(initial);
+      }
+    })();
+  </script>
+</BaseLayout>

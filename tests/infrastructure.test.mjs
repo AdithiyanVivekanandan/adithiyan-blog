@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -12,7 +12,23 @@ const MARKERS = [
   "draft-fixture-leaked-token",
   "future-canary-5b8d31",
   "fixture-future-dated",
+  "windows-apis-malware-analysis-evidence",
+  "Windows APIs for Malware Analysis",
+  "Draft status — evidence pending",
+  "VERIFY BEFORE PRACTICAL WORK",
 ];
+
+function walkDist(dir, files = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkDist(path, files);
+    } else {
+      files.push(path);
+    }
+  }
+  return files;
+}
 
 const RAW_AMPERSAND = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/;
 
@@ -39,20 +55,11 @@ test("rss.xml is valid RSS 2.0 using the configured site URL", () => {
   }
 });
 
-test("rss.xml lists only live articles, newest first", () => {
+test("rss.xml lists no items while unpublished", () => {
   const xml = readDist("rss.xml");
   const items = xml.match(/<item>/g) ?? [];
-  assert.equal(items.length, 1, "only the live fixture article is published");
-  assert.ok(
-    xml.includes(
-      `<link>${SITE}/articles/repeatable-release-check-npm-node-test/</link>`,
-    ),
-  );
-  assert.ok(xml.includes('<guid isPermaLink="true">'));
-  assert.ok(xml.includes("<pubDate>Mon, 12 Oct 2026"));
-  const firstItem = xml.indexOf("<item>");
-  const title = xml.indexOf("Building a repeatable release check");
-  assert.ok(title > firstItem, "article title is inside the channel");
+  assert.equal(items.length, 0, "no published articles means no feed items");
+  assert.ok(!xml.includes("<pubDate>"), "no dates without items");
   assert.ok(!xml.includes("2099"), "future-dated year must not appear");
 });
 
@@ -71,9 +78,9 @@ test("sitemap.xml lists exactly the public routes", () => {
     `${SITE}/about/`,
     `${SITE}/archive/`,
     `${SITE}/articles/`,
-    `${SITE}/articles/repeatable-release-check-npm-node-test/`,
+    `${SITE}/colophon/`,
+    `${SITE}/search/`,
     `${SITE}/topics/`,
-    `${SITE}/topics/systems-tooling/`,
   ]);
 
   assert.ok(
@@ -84,7 +91,7 @@ test("sitemap.xml lists exactly the public routes", () => {
   for (const marker of MARKERS) {
     assert.ok(!xml.includes(marker), `sitemap must not contain ${marker}`);
   }
-  assert.ok(xml.includes("<lastmod>2026-10-12</lastmod>"), "article lastmod");
+  assert.ok(!xml.includes("<lastmod>"), "no dates without articles");
 });
 
 test("robots.txt allows crawling and points at the sitemap", () => {
@@ -105,6 +112,13 @@ test("404 page exists with noindex, landmarks and recovery links", () => {
   assert.ok(html.includes('href="/"'), "recovery link to home");
   assert.ok(html.includes('href="/articles/"'), "recovery link to articles");
   assert.ok(html.includes('href="/topics/"'), "recovery link to topics");
+  assert.match(
+    html,
+    /<div[^>]*class="page-404-card"[^>]*aria-hidden="true"/,
+    "404 carries its decorative index-card detail",
+  );
+  assert.ok(html.includes('class="page-404-card__number"'), "card number");
+  assert.ok(html.includes("field note — page missing"), "card label");
   for (const marker of MARKERS) {
     assert.ok(!html.includes(marker), `404 must not contain ${marker}`);
   }
@@ -115,6 +129,8 @@ test("public pages advertise RSS and carry social metadata", () => {
     "index.html",
     "articles/index.html",
     "about/index.html",
+    "search/index.html",
+    "colophon/index.html",
     "404.html",
   ]) {
     const html = readDist(relative);
@@ -135,7 +151,21 @@ test("public pages advertise RSS and carry social metadata", () => {
       html.includes('name="twitter:title"'),
       `${relative}: twitter title`,
     );
+    assert.ok(
+      html.includes(`property="og:image" content="${SITE}/og.png"`),
+      `${relative}: absolute og:image`,
+    );
+    assert.ok(
+      html.includes('property="og:image:alt"'),
+      `${relative}: og:image alt text`,
+    );
+    assert.ok(
+      html.includes('property="og:image:width" content="1200"'),
+      `${relative}: og:image dimensions`,
+    );
   }
+  const image = join(distDir, "og.png");
+  assert.ok(existsSync(image), "og.png must be built to dist root");
 });
 
 test("mobile menu control is present, labelled and progressive", () => {
@@ -180,6 +210,8 @@ test("footer exposes a visible RSS link on every public page", () => {
     "topics/index.html",
     "archive/index.html",
     "about/index.html",
+    "search/index.html",
+    "colophon/index.html",
     "404.html",
   ]) {
     const html = readDist(relative);
@@ -235,5 +267,30 @@ test("about page states the correction policy", () => {
   assert.ok(
     html.includes("marked with an updated date"),
     "correction policy must reference the updated-date mechanism",
+  );
+});
+
+test("the working draft never reaches any built file", () => {
+  const files = walkDist(distDir);
+  assert.ok(files.length > 0, "dist must exist - run `npm run build` first");
+  const leaked = [];
+  for (const file of files) {
+    const content = readFileSync(file, "utf8");
+    for (const marker of MARKERS) {
+      if (content.includes(marker)) {
+        leaked.push(`${file}: ${marker}`);
+      }
+    }
+  }
+  assert.deepEqual(
+    leaked,
+    [],
+    "draft and fixture content must appear nowhere in the production build",
+  );
+  assert.ok(
+    !existsSync(
+      join(distDir, "articles", "windows-apis-malware-analysis-evidence"),
+    ),
+    "the working draft must not have an article route",
   );
 });

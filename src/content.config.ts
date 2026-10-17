@@ -2,6 +2,7 @@ import { defineCollection } from "astro:content";
 import { z } from "astro/zod";
 import { glob } from "astro/loaders";
 
+import { ARTICLE_TYPES } from "./lib/article-type";
 import { APPROVED_TOPICS } from "./lib/topics";
 
 const articles = defineCollection({
@@ -20,16 +21,7 @@ const articles = defineCollection({
       updatedAt: z.coerce.date().optional(),
       status: z.enum(["draft", "published"]),
       topics: z.array(z.enum(APPROVED_TOPICS)).min(1),
-      articleType: z
-        .enum([
-          "tutorial",
-          "investigation",
-          "experiment",
-          "opinion",
-          "fieldnote",
-          "reference",
-        ])
-        .optional(),
+      articleType: z.enum(ARTICLE_TYPES).optional(),
       references: z
         .array(
           z.object({

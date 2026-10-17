@@ -7,8 +7,8 @@ Specifications live in [`docs/`](docs/) (read `docs/README.txt` for order). Arch
 ## Stack
 
 - **Astro** (static output), TypeScript strict
-- **Markdown/MDX** content via Astro content collections (added in a later session; schema-validated at build)
-- **Vercel** static hosting from a private GitHub remote
+- **Markdown/MDX** content via Astro content collections (schema-validated at build)
+- **Cloudflare Pages** static hosting from a private GitHub remote (see [ADR 0002](docs/adr/0002-hosting-on-cloudflare-pages.md))
 - **npm** with committed lockfile
 
 See [ADR 0001](docs/adr/0001-technology-stack-and-content-workflow.md).
@@ -69,9 +69,9 @@ The exact checks required for a release are exactly `npm run check`:
 
 ## Configuration before launch
 
-- Set the real site URL in `astro.config.mjs` (`site`) — currently a placeholder. Canonical URLs, RSS and sitemap depend on it.
-- Update the publication name/description in `src/consts.ts`.
-- Connect the private GitHub remote and Vercel project; protect the default branch (require the `CI / Quality gates` check, restrict force-pushes) and restrict production deploys (see `docs/04_engineering_architecture_and_publishing.docx`).
+- The site URL is configured for production (`https://blog.adithiyan.me` in `astro.config.mjs`). Canonical URLs, RSS, sitemap and the search index are derived from it.
+- Update the publication name/description in `src/consts.ts` if the working name changes.
+- Connect the Cloudflare Pages project to the GitHub repository, protect the default branch (require the `CI / Quality gates` check, restrict force-pushes) and verify headers/DNS (see `docs/runbook.md` and `docs/05_security_threat_model_and_hardening.docx`).
 
 ## Pushing to a private GitHub remote
 
@@ -89,4 +89,9 @@ Then in GitHub settings: enable branch protection on `main` (require status chec
 
 Session 1 complete: repository, docs, ADR, minimal app, clean production build.
 Session 2 complete: quality gates (format, lint, typecheck, tests, secret scan, dependency audit) plus CI workflow and Dependabot config.
-Session 3 next: design tokens, base layout/navigation, first article, draft-exclusion tests.
+Session 3 complete: design tokens, base layout, navigation and theme system.
+Session 4 complete: content collection schema, draft-exclusion policy, article pipeline and one end-to-end article.
+Session 5 and 6 complete: home, index, topics, archive, About, 404, RSS, sitemap, robots, mobile navigation and design-fidelity fixes.
+Launch staging complete: surveyed-territory homepage, SECURITY.md, production site URL, local search, colophon and populated-article template tests.
+
+Remaining before launch is host-side and manual: Cloudflare Pages project setup and DNS, live header/CSP verification, and a manual accessibility/reader pass (see `docs/06_qa_launch_and_operations_runbook.docx`).

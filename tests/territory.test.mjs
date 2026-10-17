@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -8,9 +8,7 @@ import { APPROVED_TOPICS, topicLabel } from "../src/lib/topics.ts";
 
 const distDir = fileURLToPath(new URL("../dist", import.meta.url));
 
-const EMPTY_TOPICS = APPROVED_TOPICS.filter(
-  (slug) => slug !== "systems-tooling",
-);
+const EMPTY_TOPICS = [...APPROVED_TOPICS];
 
 function readDist(relative) {
   const path = join(distDir, relative);
@@ -40,16 +38,16 @@ test("territory map renders the exact approved taxonomy in stable order", () => 
   );
 });
 
-test("populated region leads with a collection-derived count and links", () => {
-  const html = readDist("index.html").replace(/\s+/g, " ");
-  assert.ok(html.includes("territory--lead"), "populated region leads");
+test("no region leads while the publication is empty", () => {
+  const html = readDist("index.html");
   assert.ok(
-    html.includes(
-      '<a href="/topics/systems-tooling/">Systems &amp; Tooling</a>',
-    ),
-    "populated region name links to its topic page",
+    !html.includes("territory--lead"),
+    "no lead region without published articles",
   );
-  assert.ok(html.includes("1 field note"), "live count is singular and exact");
+  assert.ok(
+    !/<p class="territory__count">\s*<a/.test(html),
+    "no count links without published articles",
+  );
 });
 
 test("empty regions link nowhere and report honest empty states", () => {
@@ -71,39 +69,14 @@ test("empty regions link nowhere and report honest empty states", () => {
   );
 });
 
-test("article pipeline figure lists the real gate stages with valid anchors", () => {
-  const html = readDist(
-    "articles/repeatable-release-check-npm-node-test/index.html",
-  );
-  assert.ok(html.includes('<figure class="pipeline">'), "figure present");
-  assert.ok(
-    html.includes("seven stages in order"),
-    "caption describes the sequence honestly",
-  );
-
-  const list =
-    html.match(/<ol class="pipeline__stages">([\s\S]*?)<\/ol>/)?.[1] ?? "";
-  assert.ok(list.length > 0, "ordered stage list present");
-
-  const links = [...list.matchAll(/<a href="(#[^"]+)">([^<]+)<\/a>/g)];
+test("no article detail routes are generated while unpublished", () => {
+  const entries = readdirSync(join(distDir, "articles"), {
+    withFileTypes: true,
+  });
+  const routes = entries.map((entry) => entry.name).sort();
   assert.deepEqual(
-    links.map((link) => link[2]),
-    [
-      "format:check",
-      "lint",
-      "typecheck",
-      "lint:secrets",
-      "audit:deps",
-      "build",
-      "test",
-    ],
-    "exactly the seven stages the project runs, in chain order",
+    routes,
+    ["index.html"],
+    "articles/ must contain only the index while no articles are published",
   );
-
-  for (const [, fragment] of links) {
-    assert.ok(
-      html.includes(`id="${fragment.slice(1)}"`),
-      `stage anchor ${fragment} resolves to a real section`,
-    );
-  }
 });

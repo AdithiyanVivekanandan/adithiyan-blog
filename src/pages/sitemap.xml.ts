@@ -36,6 +36,8 @@ export const GET: APIRoute = async ({ site }) => {
     ...nonEmptyTopics.map((slug) => ({ path: `/topics/${slug}/` })),
     { path: "/archive/" },
     { path: "/about/" },
+    { path: "/search/" },
+    { path: "/colophon/" },
   ];
 
   const urls = entries
