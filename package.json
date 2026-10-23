@@ -20,7 +20,7 @@
     "astro": "^7.4.0"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.10",
+    "@astrojs/check": "^0.9.11",
     "@eslint/js": "^10.0.1",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.7",
     "eslint": "^10.12.0",
