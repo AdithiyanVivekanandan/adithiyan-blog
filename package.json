@@ -17,7 +17,7 @@
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run lint:secrets && npm run audit:deps && npm run build && npm test"
   },
   "dependencies": {
-    "astro": "^7.4.0"
+    "astro": "^7.4.1"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
