@@ -53,26 +53,48 @@ const lightTokens = {
   canvas: tokenValue(light, "--color-canvas"),
   surface: tokenValue(light, "--color-surface"),
   surfaceRaised: tokenValue(light, "--color-surface-raised"),
+  surfaceMuted: tokenValue(light, "--color-surface-muted"),
   textPrimary: tokenValue(light, "--color-text-primary"),
   textSecondary: tokenValue(light, "--color-text-secondary"),
+  accent: tokenValue(light, "--color-accent"),
   accentText: tokenValue(light, "--color-accent-text"),
+  highlight: tokenValue(light, "--color-highlight"),
+  highlightText: tokenValue(light, "--color-highlight-text"),
   focusRing: tokenValue(light, "--color-focus-ring"),
   success: tokenValue(light, "--color-success"),
   warning: tokenValue(light, "--color-warning"),
   error: tokenValue(light, "--color-error"),
+  codeBg: tokenValue(light, "--color-code-bg"),
+  codeBar: tokenValue(light, "--color-code-bar"),
+  codeBorder: tokenValue(light, "--color-code-border"),
+  codeText: tokenValue(light, "--color-code-text"),
+  codeMuted: tokenValue(light, "--color-code-muted"),
+  codeSuccess: tokenValue(light, "--color-code-success"),
+  codeError: tokenValue(light, "--color-code-error"),
 };
 
 const darkTokens = {
   canvas: tokenValue(dark, "--color-canvas"),
   surface: tokenValue(dark, "--color-surface"),
   surfaceRaised: tokenValue(dark, "--color-surface-raised"),
+  surfaceMuted: tokenValue(dark, "--color-surface-muted"),
   textPrimary: tokenValue(dark, "--color-text-primary"),
   textSecondary: tokenValue(dark, "--color-text-secondary"),
+  accent: tokenValue(dark, "--color-accent"),
   accentText: tokenValue(dark, "--color-accent-text"),
+  highlight: tokenValue(dark, "--color-highlight"),
+  highlightText: tokenValue(dark, "--color-highlight-text"),
   focusRing: tokenValue(dark, "--color-focus-ring"),
   success: tokenValue(dark, "--color-success"),
   warning: tokenValue(dark, "--color-warning"),
   error: tokenValue(dark, "--color-error"),
+  codeBg: tokenValue(dark, "--color-code-bg"),
+  codeBar: tokenValue(dark, "--color-code-bar"),
+  codeBorder: tokenValue(dark, "--color-code-border"),
+  codeText: tokenValue(dark, "--color-code-text"),
+  codeMuted: tokenValue(dark, "--color-code-muted"),
+  codeSuccess: tokenValue(dark, "--color-code-success"),
+  codeError: tokenValue(dark, "--color-code-error"),
 };
 
 const TEXT_MINIMUM = 4.5;
@@ -102,9 +124,37 @@ const textPairs = [
   ],
   ["light accent-text on canvas", lightTokens.accentText, lightTokens.canvas],
   ["light accent-text on surface", lightTokens.accentText, lightTokens.surface],
+  [
+    "light highlight-text on canvas",
+    lightTokens.highlightText,
+    lightTokens.canvas,
+  ],
+  [
+    "light highlight-text on surface",
+    lightTokens.highlightText,
+    lightTokens.surface,
+  ],
+  [
+    "light highlight-text on surface-raised",
+    lightTokens.highlightText,
+    lightTokens.surfaceRaised,
+  ],
+  [
+    "light surface-raised on accent (button text)",
+    lightTokens.surfaceRaised,
+    lightTokens.accent,
+  ],
   ["light success on canvas", lightTokens.success, lightTokens.canvas],
   ["light warning on canvas", lightTokens.warning, lightTokens.canvas],
   ["light error on canvas", lightTokens.error, lightTokens.canvas],
+  ["light code-text on code-bg", lightTokens.codeText, lightTokens.codeBg],
+  ["light code-muted on code-bar", lightTokens.codeMuted, lightTokens.codeBar],
+  [
+    "light code-success on code-bg",
+    lightTokens.codeSuccess,
+    lightTokens.codeBg,
+  ],
+  ["light code-error on code-bg", lightTokens.codeError, lightTokens.codeBg],
   ["dark text-primary on canvas", darkTokens.textPrimary, darkTokens.canvas],
   ["dark text-primary on surface", darkTokens.textPrimary, darkTokens.surface],
   [
@@ -119,9 +169,33 @@ const textPairs = [
   ],
   ["dark accent-text on canvas", darkTokens.accentText, darkTokens.canvas],
   ["dark accent-text on surface", darkTokens.accentText, darkTokens.surface],
+  [
+    "dark highlight-text on canvas",
+    darkTokens.highlightText,
+    darkTokens.canvas,
+  ],
+  [
+    "dark highlight-text on surface",
+    darkTokens.highlightText,
+    darkTokens.surface,
+  ],
+  [
+    "dark highlight-text on surface-raised",
+    darkTokens.highlightText,
+    darkTokens.surfaceRaised,
+  ],
+  [
+    "dark surface on accent (button text)",
+    darkTokens.surface,
+    darkTokens.accent,
+  ],
   ["dark success on canvas", darkTokens.success, darkTokens.canvas],
   ["dark warning on canvas", darkTokens.warning, darkTokens.canvas],
   ["dark error on canvas", darkTokens.error, darkTokens.canvas],
+  ["dark code-text on code-bg", darkTokens.codeText, darkTokens.codeBg],
+  ["dark code-muted on code-bar", darkTokens.codeMuted, darkTokens.codeBar],
+  ["dark code-success on code-bg", darkTokens.codeSuccess, darkTokens.codeBg],
+  ["dark code-error on code-bg", darkTokens.codeError, darkTokens.codeBg],
 ];
 
 const nonTextPairs = [
@@ -132,8 +206,12 @@ const nonTextPairs = [
     "#ffffff",
     tokenValue(light, "--color-accent"),
   ],
+  ["light highlight on canvas", lightTokens.highlight, lightTokens.canvas],
+  ["light code-border on code-bg", lightTokens.codeBorder, lightTokens.codeBg],
   ["dark focus-ring on canvas", darkTokens.focusRing, darkTokens.canvas],
   ["dark focus-ring on surface", darkTokens.focusRing, darkTokens.surface],
+  ["dark highlight on canvas", darkTokens.highlight, darkTokens.canvas],
+  ["dark code-border on code-bg", darkTokens.codeBorder, darkTokens.codeBg],
 ];
 
 test("dark theme and dark media fallback define identical token values", () => {

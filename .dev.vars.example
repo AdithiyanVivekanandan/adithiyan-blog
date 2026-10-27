@@ -1,0 +1,30 @@
+# Local Pages Functions environment. Copy to .dev.vars and fill real values.
+# Never commit .dev.vars, real keys or production credentials.
+
+# Cloudflare Access (production). For localhost, set CMS_DEV_BYPASS=true.
+CF_ACCESS_TEAM_DOMAIN=example.cloudflareaccess.com
+CF_ACCESS_AUD=replace-with-access-application-audience
+CMS_ALLOWED_EMAILS=you@example.com
+CMS_CSRF_SECRET=replace-with-at-least-32-random-characters
+
+# GitHub App with Contents: read/write on this repository only.
+GITHUB_APP_ID=000000
+GITHUB_APP_INSTALLATION_ID=00000000
+GITHUB_APP_PRIVATE_KEY=replace-with-pem-encoded-private-key
+GITHUB_OWNER=AdithiyanVivekanandan
+GITHUB_REPO=adithiyan-blog
+GITHUB_BRANCH=main
+
+# Draft writes stay locked until the repository is actually private.
+CMS_REPO_PRIVATE_CONFIRMED=false
+
+# Optional Pages deployment status. Omit both to keep status "not configured".
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_PAGES_PROJECT=adithiyan-blog
+CLOUDFLARE_API_TOKEN=
+
+# Local only. Requires a localhost hostname and CMS_ENVIRONMENT=local;
+# production must set CMS_ENVIRONMENT=production.
+CMS_ENVIRONMENT=local
+CMS_DEV_BYPASS=true
+CMS_DEV_EMAIL=you@example.com

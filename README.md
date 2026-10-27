@@ -67,23 +67,44 @@ The exact checks required for a release are exactly `npm run check`:
 - Dependabot version updates and alerts are configured via `.github/dependabot.yml` (npm + github-actions, weekly). Enable **Dependabot alerts** and **secret scanning + push protection** in GitHub repository settings once the private remote exists (availability depends on your GitHub plan).
 - Resolution path: review the advisory, upgrade to a fixed version (`npm update <pkg>`), re-run `npm run check`. Use `npm audit fix` only after reviewing the resulting diff; never `--force`.
 
+## Private publishing desk
+
+The site includes a private CMS at `/r1phun73r/` for editing Markdown through a
+GitHub App. It is documented in [`docs/cms.md`](docs/cms.md) and
+[ADR 0003](docs/adr/0003-private-publishing-cms.md).
+
+Before it can save drafts:
+
+1. Make the GitHub repository private.
+2. Protect `/r1phun73r/*` with Cloudflare Access and allowlist the editor's
+   email.
+3. Create a GitHub App with Contents read/write on this repository only.
+4. Configure the production environment variables listed in `docs/cms.md`.
+5. Set `CMS_REPO_PRIVATE_CONFIRMED=true` only after the repository is private.
+
+Drafts live under `drafts/`, outside the Astro content collection. Publishing
+commits to `src/content/articles/` and lets Cloudflare Pages rebuild. The CMS
+never deploys directly and never claims a commit is live without deployment
+evidence.
+
+Local API development uses Pages Functions:
+
+```sh
+cp .dev.vars.example .dev.vars
+npm run build
+npx wrangler pages dev dist
+```
+
 ## Configuration before launch
 
 - The site URL is configured for production (`https://blog.adithiyan.me` in `astro.config.mjs`). Canonical URLs, RSS, sitemap and the search index are derived from it.
 - Update the publication name/description in `src/consts.ts` if the working name changes.
-- Connect the Cloudflare Pages project to the GitHub repository, protect the default branch (require the `CI / Quality gates` check, restrict force-pushes) and verify headers/DNS (see `docs/runbook.md` and `docs/05_security_threat_model_and_hardening.docx`).
+- Connect the Cloudflare Pages project to the GitHub repository, choose and protect the production branch (require the `CI / Quality gates` check, restrict force-pushes), configure the CMS variables and verify headers/DNS (see `docs/cms.md`, `docs/runbook.md` and `docs/05_security_threat_model_and_hardening.docx`).
+- Keep the repository private. `drafts/` is deliberately outside `src/content/`, but a public repository would still expose draft text.
 
-## Pushing to a private GitHub remote
-
-The repository is local-only until a remote is added. When ready (CI needs it):
-
-```sh
-# create an empty private repo on GitHub (no README/.gitignore), then:
-git remote add origin git@github.com:<you>/<repo>.git
-git push -u origin main
-```
-
-Then in GitHub settings: enable branch protection on `main` (require status check `Quality gates`, restrict force-pushes) and enable secret scanning/push protection plus Dependabot alerts. Never commit secrets; `.env*` is gitignored.
+Then in GitHub settings: enable branch protection, secret scanning/push
+protection and Dependabot alerts. Never commit secrets; `.env*` and
+`.dev.vars*` are gitignored.
 
 ## Session status
 
@@ -93,5 +114,6 @@ Session 3 complete: design tokens, base layout, navigation and theme system.
 Session 4 complete: content collection schema, draft-exclusion policy, article pipeline and one end-to-end article.
 Session 5 and 6 complete: home, index, topics, archive, About, 404, RSS, sitemap, robots, mobile navigation and design-fidelity fixes.
 Launch staging complete: surveyed-territory homepage, SECURITY.md, production site URL, local search, colophon and populated-article template tests.
+Private CMS complete: Access/GitHub App boundary, private draft paths, media handling, sanitised preview, deployment status, admin headers and tests.
 
-Remaining before launch is host-side and manual: Cloudflare Pages project setup and DNS, live header/CSP verification, and a manual accessibility/reader pass (see `docs/06_qa_launch_and_operations_runbook.docx`).
+Remaining before launch is host-side and manual: make the repository private, connect Cloudflare Pages and DNS, configure Access and the GitHub App, verify live headers/CSP, smoke-test the admin desk with real credentials, and run a manual accessibility/reader pass (see `docs/cms.md`, `docs/runbook.md` and `docs/06_qa_launch_and_operations_runbook.docx`).

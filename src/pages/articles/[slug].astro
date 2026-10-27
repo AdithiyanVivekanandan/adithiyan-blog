@@ -57,6 +57,9 @@ const jsonLd = {
   description: data.description,
   datePublished: publishedAt.toISOString(),
   ...(data.updatedAt ? { dateModified: data.updatedAt.toISOString() } : {}),
+  ...(data.coverImage
+    ? { image: new URL(data.coverImage, Astro.site).href }
+    : {}),
   author: { "@type": "Person", name: AUTHOR },
   mainEntityOfPage: canonical.href,
   articleSection: topicLabel(data.topics[0]),
@@ -118,6 +121,18 @@ const jsonLd = {
         </aside>
       )}
     </header>
+
+    {data.coverImage && (
+      <figure class="article__cover">
+        <img
+          src={data.coverImage}
+          alt={data.coverAlt}
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </figure>
+    )}
 
     <ArticleToc headings={headings} />
 

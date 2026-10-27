@@ -118,10 +118,11 @@ test("sitemap.xml lists exactly the public routes", () => {
   );
 });
 
-test("robots.txt allows crawling and points at the sitemap", () => {
+test("robots.txt allows public crawling, blocks the admin desk and points at the sitemap", () => {
   const txt = readDist("robots.txt");
   assert.ok(txt.includes("User-agent: *"));
   assert.ok(txt.includes("Allow: /"));
+  assert.ok(txt.includes("Disallow: /r1phun73r/"));
   assert.ok(txt.includes(`Sitemap: ${SITE}/sitemap.xml`));
 });
 

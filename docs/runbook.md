@@ -23,6 +23,9 @@ concrete, repository-specific version of the same procedures.
 4. Smoke-test on the production domain: homepage, an article route, search,
    RSS, sitemap, robots.txt and the 404 behavior. Verify the theme toggle
    still persists.
+5. Confirm `/r1phun73r/` redirects to Access for an unauthenticated request
+   and returns `X-Robots-Tag: noindex` plus `Cache-Control: no-store` after
+   authentication. Do not publish a real article just to test the desk.
 
 ## Rollback
 
@@ -57,12 +60,33 @@ Rollback alone is insufficient if content, credentials or drafts leaked: see
 4. Check whether any personal data or drafts were published; purge caches and
    request search re-indexing if private content leaked.
 
+## Publishing desk recovery
+
+1. If Access is misconfigured, restore the Access application and policy in
+   the Cloudflare dashboard. Do not disable Access to "test" the API.
+2. If the GitHub App is revoked or expired, rotate the private key, update
+   `GITHUB_APP_PRIVATE_KEY` and redeploy Pages. Check that the installation is
+   still limited to this repository.
+3. If `CMS_REPO_PRIVATE_CONFIRMED` is reset accidentally, draft writes return
+   `503` by design. Confirm the repository is private before restoring it.
+4. If Pages is building the wrong branch, fix `GITHUB_BRANCH` and the Pages
+   production branch together. A CMS commit to an unbuilt branch is not
+   published.
+5. If deployment status is unavailable, inspect the commit in GitHub and the
+   Pages dashboard. Do not assume success from a CMS toast alone.
+6. If a draft or draft media is exposed, make the repository private, rotate
+   credentials, remove the files in a reviewed commit, and treat it as a
+   content leak below.
+
 ## Content restore
 
 - Reverting a bad article is a Git revert plus a redeploy.
 - If unpublished drafts appeared in public output, the draft-exclusion tests
-  in `tests/` must be failing or the fixture set changed; investigate before
-  trusting any other output.
+  in `tests/` must be failing, the Astro content glob changed, or `drafts/`
+  was moved under `src/content/`; investigate before trusting any other
+  output.
+- CMS drafts are recoverable from `drafts/<slug>.md`; export Markdown from the
+  desk before deleting a draft if the text may still be needed.
 - Purge provider caches for affected routes after removing leaked content.
 
 ## Domain and HTTPS recovery

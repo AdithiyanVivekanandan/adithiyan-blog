@@ -9,8 +9,10 @@ topics:
   - reverse-engineering
   - systems-tooling
 articleType: tutorial
+# TODO(author): append "Analysis tools: Ghidra 12.1.4 and PE-bear for header inspection; objdump for cross-checking addresses." to technicalContext once confirmed (spec §3b / §14.3).
 technicalContext: "EndeavourOS Linux, MinGW-w64 GCC 16.2.0, Oracle VirtualBox, Windows FLARE-VM, Ghidra 12.1.4, Java 25."
-limitations: "Two questions listed in the experiment remain unresolved: whether the PE entry-point address resolves to `mainCRTStartup`, and what this binary's `__main` implementation does. The internal path behind `puts` was not examined, and every observation describes one build produced with the recorded toolchain — a rebuild may differ in bytes and layout."
+limitations: "This article covers one build produced with the recorded toolchain. The analysis is static, plus one observed run. The `puts` call is traced from the call site to the import-table entry. The C runtime’s implementation of `puts` and the Windows output path were not examined. Which branch of `__gcc_register_frame` runs, and whether `libgcc_s_dw2-1.dll` is loaded, were not tested, because no debugger or runtime tracing was used. Branches of `__tmainCRTStartup` other than the path to `main` and `exit` were not examined. A rebuild may differ in bytes and layout, so recompute addresses from your own binary."
+# TODO(author): confirm each reference supports its annotation, and add the MinGW-w64 runtime source for `__main` and constructor processing only after reading it (spec §13 / §14.5).
 references:
   - title: "PE Format — Microsoft Learn"
     url: "https://learn.microsoft.com/en-us/windows/win32/debug/pe-format"
@@ -42,6 +44,8 @@ Understanding these components is fundamental to reverse engineering. Whether th
 This article examines a small Windows executable built from C source code. Using MinGW-w64, a Windows virtual machine, and Ghidra, I compare the original source with the compiled file, inspect its machine instructions, and examine its imported functions.
 
 The goal is not to reverse engineer a complex application. It is to establish a reliable foundation for examining Windows binaries.
+
+The scope is deliberate. This article traces one executable from its PE header to the call that prints its message: the entry point, the runtime startup code, `main`, the string in `.rdata`, and the `puts` call as far as the import table. It does not analyze the C runtime’s implementation of `puts` or the Windows console-output path. Each claim is labelled Verified, Observed, Inferred or Not examined, so you can see what the evidence supports.
 
 ## 1. The program and its environment
 
@@ -124,14 +128,15 @@ This output identifies several properties of the file.
 
 The reported `5.02` is not the Windows version installed in the virtual machine. It relates to the subsystem version recorded in the PE Optional Header.
 
-The section count also illustrates why source-code size is not a reliable indication of executable complexity. Even a small program can contain sections for code, data, imports, runtime support, and other information. The precise contents should be determined by inspecting the section table, not inferred from the count alone.
+The section count also illustrates why source-code size is not a reliable indication of executable complexity. Even a small program can contain sections for code, data, imports, runtime support, and other information. Of the 19 sections in this build, 9 are DWARF debug sections (`.debug_*`). The remaining 10 hold code, data, imports, exception-handling data, thread-local storage and relocations. The precise contents come from the section table, not from the count.
 
 <figure>
   <a href="/images/understanding-windows-executables/pe32-file-layout.png">
     <img
-      src="/images/understanding-windows-executables/pe32-file-layout.png"
+      src="/images/understanding-windows-executables/pe32-file-layout.webp"
       width="1536"
       height="1024"
+      decoding="async"
       alt="Diagram of the PE32+ file layout: a DOS header whose e_magic and e_lfanew fields point to the PE signature, followed by the COFF file header, the 240-byte optional header, the section table, and sections such as .text, .rdata and .data with their file offsets."
       loading="lazy"
     />
@@ -192,9 +197,10 @@ The two hashes match exactly. Uppercase and lowercase hexadecimal characters rep
 <figure>
   <a href="/images/understanding-windows-executables/powershell-runtime-verification.png">
     <img
-      src="/images/understanding-windows-executables/powershell-runtime-verification.png"
+      src="/images/understanding-windows-executables/powershell-runtime-verification.webp"
       width="717"
       height="207"
+      decoding="async"
       alt="PowerShell session in the FLARE-VM guest: running .\hello.exe prints 'Hello from my first Windows reverse-engineering experiment.', $LASTEXITCODE reports 0, and Get-FileHash reports the SHA-256 digest A1DEA16451A5862D4028BBB533173191D5DE2065C58F94637DB2EEC526227502."
       loading="lazy"
     />
@@ -229,9 +235,10 @@ int __cdecl main(int _Argc, char **_Argv, char **_Env)
 <figure>
   <a href="/images/understanding-windows-executables/ghidra-main-listing-decompiler.png">
     <img
-      src="/images/understanding-windows-executables/ghidra-main-listing-decompiler.png"
+      src="/images/understanding-windows-executables/ghidra-main-listing-decompiler.webp"
       width="1920"
       height="814"
+      decoding="async"
       alt="Ghidra's main window for hello.exe: the Symbol Tree lists imports and functions including main, mainCRTStartup and puts; the Listing view shows main's instructions at address 140001580 with CALL __main and LEA RAX,[.rdata]; the Decompile view begins reconstructing int __cdecl main(int _Argc, char **_Argv, char **_Env)."
       loading="lazy"
     />
@@ -246,9 +253,7 @@ The reconstructed code contains the expected message, the call to `puts`, and th
 
 This is an important distinction between source code and a compiled binary. The executable contains code produced through the toolchain's compilation and linking process, not merely a textual translation of the statements written by the programmer.
 
-GCC documents `__main` as runtime support associated with initialization, including global constructors on applicable targets. That provides context for the symbol, but identifying the exact behavior of this instance requires examining the function's implementation in the binary.
-
-The decompiler output alone does not establish everything that `__main` does.
+GCC documents `__main` as runtime support associated with initialization, including global constructors on applicable targets. This binary’s `__main` is examined in Section 7.
 
 ### Why does the reconstructed signature differ?
 
@@ -272,6 +277,8 @@ The `__cdecl` label also needs context. On 64-bit Windows, ordinary function cal
 
 A decompiler is valuable for interpreting machine code, but its output remains an interpretation that should be checked against the underlying instructions.
 
+The startup code does pass three values to `main`. At the machine-code level it loads `argc`, `argv` and `envp` into `ECX`, `RDX` and `R8` before the call (Section 6). That explains why Ghidra reconstructs a three-parameter prototype. It does not change the source, which declares `int main(void)`. The reconstructed signature is an interpretation of the call site, not a recovered declaration.
+
 ## 5. Reading the assembly
 
 The Ghidra Listing view showed the following instructions around `main`:
@@ -281,7 +288,7 @@ The Ghidra Listing view showed the following instructions around `main`:
 140001581  MOV  RBP, RSP
 140001584  SUB  RSP, 0x20
 140001588  CALL __main
-14000158D  LEA  RAX, [.rdata]
+14000158D  LEA  RAX, [0x140004050]   ; address of the string in .rdata
 140001594  MOV  RCX, RAX
 140001597  CALL puts
 14000159C  MOV  EAX, 0x0
@@ -289,6 +296,8 @@ The Ghidra Listing view showed the following instructions around `main`:
 1400015A5  POP  RBP
 1400015A6  RET
 ```
+
+Ghidra labels the `MOV` at `0x140001594` with the parameter alias `_Argc` in some views, because `RCX` is the first-argument register. The instruction is `MOV RCX, RAX`. Show the register, not the alias.
 
 These instructions provide a lower-level view of the function reconstructed by the decompiler.
 
@@ -306,16 +315,29 @@ SUB  RSP, 0x20
 
 The immediate value `0x20` represents 32 bytes.
 
-On the Microsoft x64 ABI, a caller reserves 32 bytes of shadow space for the callee. The `PUSH RBP` changes the stack pointer, and subtracting `0x20`, a multiple of 16, preserves the required alignment for subsequent calls under the usual function-entry conditions.
+The Microsoft x64 ABI requires the stack pointer to be 16-byte aligned at a call and a caller to reserve 32 bytes of shadow space for the callee. The check below follows the path from the entry point to `main`. It assumes the standard condition that `RSP ≡ 8 (mod 16)` on entry to `mainCRTStartup`, which is what the ABI expects after the caller’s `call`. That assumption was not examined.
 
-This allocation should not be interpreted as proof that the source contains 32 bytes of local variables. Stack space can serve calling-convention and alignment requirements.
+| Point                     | Operation                    | RSP mod 16                         |
+| ------------------------- | ---------------------------- | ---------------------------------- |
+| `mainCRTStartup` entry    | assumed                      | 8                                  |
+| after `SUB RSP, 0x28`     | 40 bytes                     | 0                                  |
+| `__tmainCRTStartup` entry | `CALL` pushes return address | 8                                  |
+| `__tmainCRTStartup`       | 8 register pushes (64 bytes) | 8                                  |
+|                           | `SUB RSP, 0x58` (88 bytes)   | 0                                  |
+| `main` entry              | `CALL` pushes return address | 8                                  |
+| `main`                    | `PUSH RBP`                   | 0                                  |
+|                           | `SUB RSP, 0x20`              | 0 at `CALL __main` and `CALL puts` |
+
+Given the entry assumption, the frame sizes along this path are consistent with the ABI, including at `main`’s two call sites. Other call sites inside `__tmainCRTStartup` were not checked. This is not a claim about every call in the executable. The 32 bytes in `main` is not evidence of 32 bytes of local variables. It serves the shadow-space and alignment requirements.
+
+Status: **Verified** for the arithmetic along this path, **Inferred** for the entry assumption.
 
 ### Passing the string to `puts`
 
 The next sequence is:
 
 ```asm
-LEA RAX, [...]
+LEA RAX, [0x140004050]
 MOV RCX, RAX
 CALL puts
 ```
@@ -351,49 +373,100 @@ The function then restores the stack pointer and saved frame pointer before exec
 
 Returning from `main` is not the same operation as directly terminating a Windows process. The return value is passed back to the caller; runtime startup and termination code determine what happens afterward.
 
-## 6. The executable entry point and runtime startup
+## 6. The entry point and runtime startup
 
-The C function `main` is not ordinarily the initial entry point of a conventional Windows C executable.
+> A conventional C executable does not begin at `main`. The PE Optional Header’s `AddressOfEntryPoint` field gives an RVA, a location relative to the image base. The virtual address is the image base plus that RVA.
 
-The PE Optional Header contains an `AddressOfEntryPoint` field. This field identifies the entry-point address relative to the loaded image.
+### 6.1 Resolving the entry point
 
-For a conventional C executable, startup code prepares the runtime environment before transferring control to `main`. This is one reason a compiled binary can contain functions that are absent from the original source.
+| Field                       | Value                                | Where                                     |
+| --------------------------- | ------------------------------------ | ----------------------------------------- |
+| `ImageBase`                 | `0x140000000`                        | PE Optional Header                        |
+| `AddressOfEntryPoint` (RVA) | `0x1440`                             | PE Optional Header                        |
+| Entry-point VA              | `0x140000000 + 0x1440 = 0x140001440` | calculated                                |
+| Function at `0x140001440`   | `mainCRTStartup`                     | Ghidra and the binary’s COFF symbol table |
 
-Ghidra's Symbol Tree showed a symbol named `mainCRTStartup` in this executable. Its presence is consistent with a runtime startup routine. However, the symbol's presence alone does not establish that it corresponds to this binary's PE entry-point address.
+Status: **Verified.** The header values were read in PE-bear and directly from the file bytes. The address maps to the symbol `mainCRTStartup`.
 
-To confirm that relationship, the entry-point field must be inspected in the PE header and compared with the corresponding address in Ghidra.
+<!-- TODO(author): include the PE-bear Optional Header screenshot here (spec §6.1 / §14.2). -->
 
-Conceptually, the execution path of a conventional C executable can be represented as:
+### 6.2 `mainCRTStartup` to `main`
 
-```text
-Windows executable on disk
-          |
-          v
-Process creation and image loading
-          |
-          v
-PE entry point
-          |
-          v
-C runtime startup
-          |
-          v
-main()
-          |
-          v
-puts(message)
-          |
-          v
-Return from main and runtime termination
+`mainCRTStartup` is short:
+
+```asm
+140001440  SUB  RSP, 0x28
+140001444  MOV  RAX, [__mingw_app_type]
+14000144B  MOV  dword ptr [RAX], 0x0
+140001451  CALL __tmainCRTStartup
 ```
 
-This is a simplified model rather than a trace of every operation performed by the Windows loader in this experiment.
+It reserves stack space, stores `0` in `__mingw_app_type` (the console-application setting) and calls `__tmainCRTStartup` at `0x140001020`. A sibling, `WinMainCRTStartup` at `0x140001420`, is the GUI-application variant and is not referenced by this executable’s entry point.
 
-The loader, runtime initialization, application code, and termination routines have distinct responsibilities. Understanding those boundaries helps when moving from simple executable inspection to more detailed Windows internals analysis.
+`__tmainCRTStartup` does the runtime setup and then calls `main` at `0x1400010D4`. Before that call it loads `argc`, `argv` and `envp` into `ECX`, `RDX` and `R8`. After `main` returns, the console path runs `MOV ECX, EAX` then `CALL exit` at `0x140001407`, so `main`’s return value becomes the argument to `exit`.
 
-## 7. Understanding imported functions
+Status: the call chain, the argument loads and the `exit` call are **Verified** by disassembly. Returning from `main` therefore reaches `exit`, not a direct process termination. `__tmainCRTStartup`’s other branches (lock handling, TLS callbacks, error exits) were **Not examined**.
 
-Ghidra's Imports tree showed API-set contracts, including:
+### 6.3 Execution path with addresses
+
+The static call relationships in this binary are:
+
+```text
+PE header: AddressOfEntryPoint 0x1440 + ImageBase 0x140000000
+   |
+   v
+0x140001440  mainCRTStartup           sets __mingw_app_type = 0
+   | call
+   v
+0x140001020  __tmainCRTStartup        loads argc/argv/envp
+   | call at 0x1400010D4
+   v
+0x140001580  main
+   |-- call at 0x140001588 --> 0x140001680  __main
+   |                             '-- jmp --> 0x140001600  __do_global_ctors
+   |                                           '-- call --> 0x140002B30  register_frame_ctor
+   |                                                         '-- jmp --> 0x140001490  __gcc_register_frame
+   '-- call at 0x140001597 --> 0x1400029D8  puts (thunk)
+                                 '-- jmp [0x140009408] --> __imp_puts
+   |
+   | returns EAX = 0
+   v
+0x140001407  MOV ECX, EAX ; CALL exit   (inside __tmainCRTStartup)
+```
+
+Static call relationships traced in this binary. Execution beyond `__imp_puts` and beyond `exit` is outside what was examined.
+
+## 7. What `__main` does in this build
+
+GCC documents `__main` as initialization support associated with global constructors on applicable targets. That describes the symbol’s purpose in general. This section records what this binary’s copy does.
+
+1. **`__main`** (`0x140001680`) reads an `initialized` flag. If it is already set, it returns. Otherwise it sets the flag and tail-jumps to `__do_global_ctors`.
+2. **`__do_global_ctors`** (`0x140001600`) walks `__CTOR_LIST__` and calls each entry, then registers `__do_global_dtors` with `atexit`.
+3. **The constructor list** (`0x1400049D0`, in `.rdata`) contains exactly one entry: `register_frame_ctor` at `0x140002B30`.
+4. **`register_frame_ctor`** is a one-instruction thunk that jumps to `__gcc_register_frame` (`0x140001490`).
+5. **`__gcc_register_frame`**:
+   - calls `GetModuleHandleA("libgcc_s_dw2-1.dll")`;
+   - if the module is already loaded, calls `LoadLibraryA`, then `GetProcAddress` for `__register_frame_info` and `__deregister_frame_info`;
+   - if it is not loaded, falls back to weak stubs;
+   - in both cases calls the register function on the frame data at `0x140005000` when one is available, and registers `__gcc_deregister_frame` with `atexit`.
+
+> **Runtime-supplied versus source-requested.** The one constructor in this list comes from the toolchain’s startup objects. Nothing in the list is attributable to `hello.c`, which contains no constructors of its own. The binary shows a runtime that carries initialization machinery regardless of what the source asks for. Whether other MinGW-w64 builds contain the same entry depends on the runtime version and link configuration.
+
+| Claim                                                                        | Status                                  |
+| ---------------------------------------------------------------------------- | --------------------------------------- |
+| `__main` checks a flag and tail-calls `__do_global_ctors`                    | Verified                                |
+| `__CTOR_LIST__` has one entry, `register_frame_ctor`                         | Verified (raw bytes and disassembly)    |
+| `register_frame_ctor` leads to `__gcc_register_frame`                        | Verified                                |
+| The code is exception-frame registration support                             | Inferred from the strings and API calls |
+| Which branch ran, whether the DLL was loaded, whether registration succeeded | Not examined (no dynamic analysis)      |
+
+The import table does not list `libgcc_s_dw2-1.dll`. That is consistent with the fallback path, but it is not evidence of which branch executed.
+
+<!-- TODO(author): include the Ghidra screenshots for `__main`, `__do_global_ctors` and `__gcc_register_frame` here (spec §7 / §14.1). -->
+
+## 8. Understanding imported functions and the `puts` call
+
+Ghidra’s Imports tree showed API-set contracts, including:
 
 ```text
 API-MS-WIN-CRT-STDIO-L1-1-0
@@ -411,20 +484,21 @@ puts
 setvbuf
 ```
 
-These are names displayed in the executable's import information under the CRT standard-I/O API-set contract.
+These are names displayed in the executable’s import information under the CRT standard-I/O API-set contract.
 
 <figure>
   <a href="/images/understanding-windows-executables/ghidra-imports-stdio.png">
     <img
-      src="/images/understanding-windows-executables/ghidra-imports-stdio.png"
+      src="/images/understanding-windows-executables/ghidra-imports-stdio.webp"
       width="390"
       height="476"
+      decoding="async"
       alt="Ghidra's Imports tree: under the API-MS-WIN-CRT-STDIO-L1-1-0.DLL contract it lists __acrt_iob_func, __p__commode, __p__fmode, __stdio_common_vfprintf, fflush, puts and setvbuf, alongside other CRT API-set contracts and KERNEL32.DLL."
       loading="lazy"
     />
   </a>
   <figcaption>
-    Ghidra's Imports tree exposes the executable's imported standard-I/O
+    Ghidra’s Imports tree exposes the executable’s imported standard-I/O
     functions.
   </figcaption>
 </figure>
@@ -437,36 +511,54 @@ Three observations can therefore be compared:
 - The disassembly shows a call to `puts`.
 - PowerShell displayed the expected message when the executable ran.
 
-These observations are consistent with one another, but they do not constitute a complete trace of the internal implementation of `puts` or every operation involved in producing the output.
-
 The API-set name is also significant. An API-set contract is not necessarily the name of a physical DLL implementing the imported function. Windows uses its API-set mechanism to resolve these contracts.
 
-The displayed imports suggest a relationship with the Universal C Runtime's standard-I/O functionality. Determining the exact runtime configuration and implementation path for this particular build requires further inspection.
+The displayed imports suggest a relationship with the Universal C Runtime’s standard-I/O functionality. Determining the exact runtime configuration and implementation path for this particular build requires further inspection.
+
+### Following the call to the import boundary
+
+The call in `main` is traced through the actual addresses:
+
+| Step        | Address       | What is there                                                          |
+| ----------- | ------------- | ---------------------------------------------------------------------- |
+| Call site   | `0x140001597` | `CALL 0x1400029D8`                                                     |
+| Local thunk | `0x1400029D8` | `JMP [0x140009408]`                                                    |
+| IAT slot    | `0x140009408` | `__imp_puts`; on disk holds RVA `0x9700` (a hint/name entry); hint 133 |
+| Import      |               | `puts` under `api-ms-win-crt-stdio-l1-1-0.dll`                         |
+| Argument    | `0x140004050` | string in `.rdata`, in `RCX` at the call                               |
+
+The thunk contains no implementation of `puts`. It jumps through a pointer that the Windows loader fills in at load time. The bytes in the IAT slot on disk (`00 97 00 00 …`) are an RVA to a hint/name entry, not the function’s runtime address.
+
+Status: **Verified** from the call site to the import-table entry. Everything after the loader resolves that slot is **Not examined**: the Universal C Runtime’s `puts`, buffering and the Windows console-output path.
 
 More generally, imports help identify dependencies and interfaces used by a binary. They do not, by themselves, establish which functions execute during a particular run or explain the complete behavior of the program.
 
-## 8. What the experiment establishes
+## 9. What the experiment establishes
 
 The experiment provides several independently observed facts about the same executable.
 
-| Question                                                           | Evidence                              | Status           |
-| ------------------------------------------------------------------ | ------------------------------------- | ---------------- |
-| What format does the file utility identify?                        | `file hello.exe` output               | Observed         |
-| Are the host and guest copies identical?                           | Matching SHA-256 hashes               | Verified         |
-| Did the executable print the expected message?                     | PowerShell output                     | Observed         |
-| What does Ghidra reconstruct for `main`?                           | Decompiler view                       | Observed         |
-| Is `__main` called inside `main`?                                  | Decompiler and Listing views          | Observed         |
-| Is `puts` listed as an import?                                     | Imports tree                          | Observed         |
-| Does the assembly place an address in `RCX` before calling `puts`? | Listing instructions                  | Observed         |
-| Does the PE entry-point address resolve to `mainCRTStartup`?       | Header-to-function address comparison | Not yet verified |
-| What does this binary's `__main` implementation do?                | Inspection of the function body       | Not yet verified |
-| What is the complete internal execution path behind `puts`?        | No execution trace collected          | Not examined     |
+| Question                                                             | Evidence                                                                                      | Status                                       |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| What format does `file` identify?                                    | `file hello.exe` output                                                                       | Observed                                     |
+| Are the host and guest copies identical?                             | Matching SHA-256 hashes; hash also recomputed from the analyzed file                          | Verified                                     |
+| Did the executable print the expected message and exit with 0?       | PowerShell output and `$LASTEXITCODE`                                                         | Observed                                     |
+| What does Ghidra reconstruct for `main`?                             | Decompiler view                                                                               | Observed                                     |
+| Is `__main` called inside `main`?                                    | Listing and decompiler                                                                        | Observed                                     |
+| Does the entry point resolve to `mainCRTStartup`?                    | `0x140000000 + 0x1440 = 0x140001440`, matching the symbol                                     | Verified                                     |
+| What does this binary’s `__main` do?                                 | Disassembly of `__main`, `__do_global_ctors`, the constructor list and `__gcc_register_frame` | Verified                                     |
+| Does startup pass `argc`, `argv`, `envp` to `main`?                  | Register loads before the call at `0x1400010D4`                                               | Verified                                     |
+| Does `main`’s return value reach `exit`?                             | `MOV ECX, EAX; CALL exit` at `0x140001407`                                                    | Verified                                     |
+| How does the `puts` call reach the import?                           | Call site, thunk and IAT slot, as in Section 8                                                | Verified                                     |
+| Does the assembly place the string address in `RCX` before the call? | Listing                                                                                       | Observed                                     |
+| Is stack alignment consistent to `main`?                             | Arithmetic in Section 5, assuming standard entry alignment                                    | Verified, with the entry assumption Inferred |
+| Did the runtime load `libgcc_s_dw2-1.dll`?                           | No dynamic analysis                                                                           | Not examined                                 |
+| What is the execution path inside `puts`?                            | No trace collected                                                                            | Not examined                                 |
 
 The distinction between observed facts and unresolved questions is important in reverse engineering. A function name, import entry, or decompiler reconstruction can provide useful evidence, but each supports a different kind of conclusion.
 
 A reliable analysis records what the evidence shows and avoids turning plausible explanations into verified findings.
 
-## 9. Reproducing the experiment
+## 10. Reproducing the experiment
 
 The core experiment can be reproduced with a Windows-targeted MinGW-w64 compiler, a Windows test environment, and Ghidra.
 
@@ -500,20 +592,18 @@ Finally, import the same executable into Ghidra and inspect:
 2. The Listing view around `main`.
 3. The instructions that prepare the argument to `puts`.
 4. The Imports tree and its CRT standard-I/O entry.
-5. The PE Optional Header and entry-point address.
+5. The PE Optional Header (`ImageBase`, `AddressOfEntryPoint`) in PE-bear or Ghidra’s PE view, and the function at the resulting address.
+6. The constructor list behind `__main`.
+7. The call chain from `main`’s `CALL puts` to the IAT slot.
 
 The experiment used a mounted ISO for file transfer, but another controlled transfer method can be used.
 
-A rebuild may produce a different binary because compiler configuration, runtime linkage, and build details can affect the output. Record the environment and observed results rather than expecting another build to have the same hash or identical layout.
+A rebuild may produce a different binary because compiler configuration, runtime linkage, and build details can affect the output. Record the environment and observed results rather than expecting another build to have the same hash or identical layout. A rebuild may not match these addresses; recompute them from your own binary using the VA = ImageBase + RVA relationship.
 
 ## Conclusion
 
-Examining a small Windows executable provides a practical introduction to several concepts that are central to reverse engineering.
+Examining one small Windows executable connects several ideas that run through reverse engineering. The PE header’s entry point leads to the compiler’s startup code, not to `main`. That startup code prepares the runtime, passes `argc`, `argv` and `envp` to `main`, and sends `main`’s return value to `exit`. Inside `main`, a call to `__main` runs toolchain-supplied initialization that the source never requested. The greeting is a string in `.rdata`, and the `puts` call reaches the import table through a local thunk.
 
-The source code describes the program that was written. The compiled executable contains machine instructions and supporting structures produced by the toolchain. Ghidra reconstructs a readable representation of those instructions, while the Imports tree exposes information about external dependencies.
+The source, the disassembly, the decompiler’s output, the PE metadata and the run each answer different questions. The useful habit is to move between them without treating them as equivalent, and to label each claim by how it was established.
 
-In this experiment, the original source, the disassembly, the imported `puts` symbol, and the runtime output provided complementary views of the same program. The additional `__main` call also demonstrated why the compiled binary cannot be understood solely by reading the original C source.
-
-The important skill is learning to move between these representations without treating them as equivalent. Source code, machine instructions, file metadata, imports, and runtime observations answer different questions.
-
-These fundamentals provide the starting point for deeper examination of the PE format, Windows process initialization, imported APIs, and the behavior of unfamiliar executables.
+These fundamentals lead to the next questions: how the loader resolves imports, what the C runtime does inside `puts`, and what a debugger shows when the same path runs.

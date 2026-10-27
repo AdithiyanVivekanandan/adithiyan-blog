@@ -18,6 +18,15 @@ test(".gitignore excludes environment files", () => {
     lines.includes("!.env.example"),
     ".gitignore must allow committed .env.example files",
   );
+  assert.ok(lines.includes(".dev.vars"), ".gitignore must exclude .dev.vars");
+  assert.ok(
+    lines.includes(".dev.vars.*"),
+    ".gitignore must exclude .dev.vars.*",
+  );
+  assert.ok(
+    lines.includes("!.dev.vars.example"),
+    ".gitignore must allow a committed .dev.vars.example",
+  );
 });
 
 test(".gitignore excludes build output and dependencies", () => {
@@ -30,7 +39,11 @@ test(".gitignore excludes build output and dependencies", () => {
 test("no environment files exist at the repository root", () => {
   const entries = readdirSync(new URL("../", import.meta.url));
   const envFiles = entries.filter(
-    (name) => name === ".env" || name.startsWith(".env."),
+    (name) =>
+      name === ".env" ||
+      name.startsWith(".env.") ||
+      name === ".dev.vars" ||
+      (name.startsWith(".dev.vars.") && name !== ".dev.vars.example"),
   );
   assert.deepEqual(
     envFiles,

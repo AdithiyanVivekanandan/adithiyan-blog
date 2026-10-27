@@ -1,0 +1,50 @@
+# Security and cache headers for Cloudflare Pages (served verbatim from the
+# build output; verify on the live domain after deploy).
+#
+# CSP note: script-src and style-src include 'unsafe-inline' because this site
+# relies on small inline progressive-enhancement scripts (theme, nav, search,
+# copy-code) and Shiki emits inline style attributes on highlighted code.
+# Astro's hash-based CSP config would only cover framework-processed modules,
+# not the is:inline scripts this site ships, so 'unsafe-inline' stays and is
+# documented here rather than half-removed. The policy is still self-hosted
+# only: no external origins, no frames, no plugin content.
+#
+# frame-ancestors is header-only by design (it has no effect in a meta tag),
+# which is exactly why these headers ship via _headers rather than <meta>.
+# X-Frame-Options is the legacy fallback for the same rule.
+#
+# HSTS is deliberately moderate: a 180-day max-age for this Pages custom
+# domain, without includeSubDomains and without preload. Raise the duration or
+# scope only after confirming every hostname that could be affected serves
+# HTTPS.
+#
+# Caching: Astro fingerprints everything under /_astro/ (hash in the file
+# name), so those responses are safe to cache for a year, immutable. Public
+# HTML, feeds and indexes keep the site-wide revalidation policy; the private
+# desk is the one exception and must never be cached.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=15552000
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Private publishing desk: stricter than the public site, never indexed or cached.
+/r1phun73r/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-Robots-Tag: noindex, nofollow
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=15552000
+  Cache-Control: no-store, max-age=0
+
+# Fingerprinted static assets only.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

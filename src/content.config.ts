@@ -18,6 +18,15 @@ const articles = defineCollection({
           "slug must be lowercase and URL-safe",
         ),
       description: z.string().trim().min(20).max(400),
+      coverImage: z
+        .string()
+        .trim()
+        .regex(
+          /^\/images\/[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9][a-z0-9._-]*\.(?:png|jpe?g|webp|gif)$/i,
+          "coverImage must be a raster image under /images/<slug>/",
+        )
+        .optional(),
+      coverAlt: z.string().trim().min(1).max(200).optional(),
       publishedAt: z.coerce.date().optional(),
       updatedAt: z.coerce.date().optional(),
       status: z.enum(["draft", "published"]),
@@ -36,6 +45,31 @@ const articles = defineCollection({
       limitations: z.string().trim().min(1).optional(),
     })
     .superRefine((article, ctx) => {
+      if (article.coverImage && !article.coverAlt) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["coverAlt"],
+          message: "coverImage requires coverAlt",
+        });
+      }
+      if (article.coverAlt && !article.coverImage) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["coverImage"],
+          message: "coverAlt requires coverImage",
+        });
+      }
+      if (
+        article.coverImage &&
+        !article.coverImage.startsWith(`/images/${article.slug}/`)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["coverImage"],
+          message:
+            "coverImage must live under the article's own /images/<slug>/ directory",
+        });
+      }
       if (article.status === "published" && !article.publishedAt) {
         ctx.addIssue({
           code: "custom",

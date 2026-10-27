@@ -1,0 +1,26 @@
+---
+import "../styles/tokens.css";
+import "../styles/global.css";
+import "../styles/article.css";
+import "../styles/admin.css";
+
+interface Props {
+  title?: string;
+}
+
+const { title = "Publishing desk" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light dark" />
+    <title>{title} · Technical Fieldnotes</title>
+  </head>
+  <body class="admin">
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,680 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { ARTICLE_TYPES, articleTypeLabel } from "../../lib/article-type";
+import { APPROVED_TOPICS, topicLabel } from "../../lib/topics";
+---
+
+<AdminLayout title="Publishing desk">
+  <main class="admin-shell" id="admin-app">
+    <header class="admin-topbar">
+      <div>
+        <p class="admin-kicker">Technical Fieldnotes</p>
+        <h1 class="admin-title">Publishing desk</h1>
+      </div>
+      <div class="admin-identity">
+        <span id="session-email">Loading…</span>
+        <button type="button" id="refresh-articles" class="admin-button">
+          Refresh
+        </button>
+        <a id="logout" class="admin-link" href="/" hidden>
+          Sign out
+        </a>
+      </div>
+    </header>
+
+    <p id="dev-banner" class="admin-banner admin-banner--warning" hidden>
+      Local development identity. Cloudflare Access is bypassed on localhost.
+    </p>
+
+    <div
+      id="global-status"
+      class="admin-status"
+      role="status"
+      aria-live="polite"
+    >
+      <span id="status-text">Loading the publishing desk…</span>
+      <span id="status-actions"></span>
+    </div>
+
+    <section
+      id="auth-error"
+      class="admin-panel admin-panel--error"
+      aria-labelledby="auth-error-title"
+      hidden
+    >
+      <h2 id="auth-error-title">The publishing desk is locked</h2>
+      <p id="auth-error-message">
+        Cloudflare Access did not authorize this request.
+      </p>
+      <p>
+        Add your email to the Access policy and <code>CMS_ALLOWED_EMAILS</code>,
+        then reload this page. Unsaved text stays in this browser tab until you
+        close it.
+      </p>
+      <button type="button" class="admin-button" id="auth-reload">
+        Reload
+      </button>
+    </section>
+
+    <section
+      id="config-error"
+      class="admin-panel admin-panel--error"
+      aria-labelledby="config-error-title"
+      hidden
+    >
+      <h2 id="config-error-title">The CMS is not ready</h2>
+      <p id="config-error-message"></p>
+      <p>
+        See <code>docs/cms.md</code> in the repository for the required
+        environment variables and Cloudflare Access setup.
+      </p>
+    </section>
+
+    <div id="recovery-banner" class="admin-banner" hidden>
+      <span id="recovery-message"></span>
+      <span class="admin-banner__actions">
+        <button type="button" class="admin-button" id="recovery-restore">
+          Restore
+        </button>
+        <button type="button" class="admin-button" id="recovery-discard">
+          Discard
+        </button>
+      </span>
+    </div>
+
+    <div id="workspace" class="admin-workspace" hidden>
+      <aside class="admin-sidebar" aria-label="Articles">
+        <div class="admin-stats" id="stats">
+          <div>
+            <span class="admin-stat__value" id="stat-drafts">
+              0
+            </span>
+            <span class="admin-stat__label">Drafts</span>
+          </div>
+          <div>
+            <span class="admin-stat__value" id="stat-published">
+              0
+            </span>
+            <span class="admin-stat__label">Published</span>
+          </div>
+          <div>
+            <span class="admin-stat__value" id="stat-archived">
+              0
+            </span>
+            <span class="admin-stat__label">Archived</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          id="new-article"
+          class="admin-button admin-button--primary admin-button--block"
+        >
+          New article
+        </button>
+
+        <div class="admin-filters">
+          <label class="admin-field admin-field--compact">
+            <span>Search</span>
+            <input
+              type="search"
+              id="article-search"
+              placeholder="Title or slug"
+              autocomplete="off"
+            />
+          </label>
+          <label class="admin-field admin-field--compact">
+            <span>Show</span>
+            <select id="article-filter">
+              <option value="all">All articles</option>
+              <option value="drafts">Drafts and changes</option>
+              <option value="published">Published</option>
+              <option value="archived">Archived</option>
+            </select>
+          </label>
+        </div>
+
+        <p id="list-empty" class="admin-muted" hidden>
+          No articles match this view.
+        </p>
+        <ul id="article-list" class="admin-article-list"></ul>
+      </aside>
+
+      <section class="admin-editor" aria-label="Article editor">
+        <div id="editor-empty" class="admin-panel admin-empty">
+          <h2>Nothing open</h2>
+          <p>
+            Select an article from the list or start a new draft. Drafts are
+            committed to the private repository; publishing commits the article
+            to the content directory and triggers a Cloudflare Pages build.
+          </p>
+        </div>
+
+        <form id="article-form" class="admin-form" hidden>
+          <div class="admin-form__head">
+            <div>
+              <p class="admin-kicker" id="editor-location">
+                Draft
+              </p>
+              <h2 id="editor-heading">New article</h2>
+            </div>
+            <div class="admin-form__head-actions">
+              <label class="admin-inline-field">
+                <span>Editing</span>
+                <select
+                  id="location-select"
+                  aria-label="Article version"
+                ></select>
+              </label>
+              <span id="dirty-indicator" class="admin-muted" hidden>
+                Unsaved changes
+              </span>
+            </div>
+          </div>
+
+          <details class="admin-details" open>
+            <summary>Article details</summary>
+            <div class="admin-form-grid">
+              <label class="admin-field admin-field--wide">
+                <span>Title</span>
+                <input
+                  type="text"
+                  id="title"
+                  maxlength="120"
+                  required
+                  autocomplete="off"
+                />
+              </label>
+              <label class="admin-field">
+                <span>Slug / URL</span>
+                <input
+                  type="text"
+                  id="slug"
+                  maxlength="120"
+                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  required
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <small id="slug-help">
+                  Lowercase letters, numbers and single hyphens.
+                </small>
+              </label>
+              <label class="admin-field">
+                <span>Article type</span>
+                <select id="article-type">
+                  <option value="">Field note (default)</option>
+                  {ARTICLE_TYPES.map((type) => (
+                    <option value={type}>{articleTypeLabel(type)}</option>
+                  ))}
+                </select>
+              </label>
+              <label class="admin-field admin-field--wide">
+                <span>Subtitle (optional)</span>
+                <input
+                  type="text"
+                  id="subtitle"
+                  maxlength="160"
+                  autocomplete="off"
+                />
+              </label>
+              <label class="admin-field admin-field--wide">
+                <span>Description</span>
+                <textarea
+                  id="description"
+                  rows="3"
+                  minlength="20"
+                  maxlength="400"
+                  required
+                ></textarea>
+                <small>
+                  At least 20 characters. Used for cards, search and feeds.
+                </small>
+              </label>
+              <fieldset
+                class="admin-fieldset admin-field--wide"
+                id="topics-fieldset"
+              >
+                <legend>Topics</legend>
+                <div class="admin-checks">
+                  {APPROVED_TOPICS.map((topic) => (
+                    <label class="admin-check">
+                      <input type="checkbox" name="topics" value={topic} />
+                      <span>{topicLabel(topic)}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <label class="admin-field">
+                <span>Publication date (UTC)</span>
+                <input type="datetime-local" id="published-at" step="60" />
+              </label>
+              <label class="admin-field">
+                <span>Updated date (UTC)</span>
+                <input type="datetime-local" id="updated-at" step="60" />
+              </label>
+              <div class="admin-field admin-field--wide">
+                <span>Reading time</span>
+                <p id="reading-time" class="admin-reading-time">
+                  1 min read · 0 words
+                </p>
+              </div>
+              <div class="admin-field admin-field--wide">
+                <span>Cover image (optional)</span>
+                <div class="admin-cover">
+                  <div id="cover-preview" class="admin-cover__preview" hidden>
+                    <img id="cover-image-preview" alt="" />
+                    <p id="cover-alt-preview" class="admin-muted"></p>
+                  </div>
+                  <div class="admin-cover__actions">
+                    <input type="hidden" id="cover-image" />
+                    <input type="hidden" id="cover-alt" />
+                    <button
+                      type="button"
+                      id="cover-choose"
+                      class="admin-button"
+                    >
+                      Choose cover
+                    </button>
+                    <button type="button" id="cover-clear" class="admin-button">
+                      Clear cover
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <label class="admin-field admin-field--wide">
+                <span>Technical context (optional)</span>
+                <textarea
+                  id="technical-context"
+                  rows="3"
+                  maxlength="4000"
+                ></textarea>
+              </label>
+              <label class="admin-field admin-field--wide">
+                <span>Limitations (optional)</span>
+                <textarea id="limitations" rows="3" maxlength="4000"></textarea>
+              </label>
+            </div>
+
+            <fieldset class="admin-fieldset">
+              <legend>References (optional)</legend>
+              <div id="references"></div>
+              <button type="button" id="add-reference" class="admin-button">
+                Add reference
+              </button>
+            </fieldset>
+          </details>
+
+          <div
+            class="admin-editor-toolbar"
+            role="toolbar"
+            aria-label="Markdown formatting"
+          >
+            <div class="admin-segmented" role="group" aria-label="Editor view">
+              <button type="button" data-view="write" aria-pressed="true">
+                Write
+              </button>
+              <button type="button" data-view="split" aria-pressed="false">
+                Split
+              </button>
+              <button type="button" data-view="preview" aria-pressed="false">
+                Preview
+              </button>
+            </div>
+            <span class="admin-toolbar__divider" aria-hidden="true"></span>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="h2"
+              aria-label="Heading 2"
+            >
+              H2
+            </button>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="h3"
+              aria-label="Heading 3"
+            >
+              H3
+            </button>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="bold"
+              aria-label="Bold"
+            >
+              B
+            </button>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="italic"
+              aria-label="Italic"
+            >
+              <em>I</em>
+            </button>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="link"
+              aria-label="Link"
+            >
+              Link
+            </button>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="code"
+              aria-label="Inline code"
+            >
+              Code
+            </button>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="codeblock"
+              aria-label="Code block"
+            >
+              Code block
+            </button>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="quote"
+              aria-label="Blockquote"
+            >
+              Quote
+            </button>
+            <button
+              type="button"
+              class="admin-tool"
+              data-format="list"
+              aria-label="Bulleted list"
+            >
+              List
+            </button>
+            <button type="button" class="admin-tool" data-format="media">
+              Media
+            </button>
+          </div>
+
+          <div id="editor-grid" class="admin-editor-grid" data-view="write">
+            <label class="admin-editor-pane">
+              <span class="visually-hidden">Markdown body</span>
+              <textarea
+                id="body"
+                class="admin-editor-input"
+                spellcheck="true"
+                aria-describedby="editor-help"
+              ></textarea>
+            </label>
+            <div class="admin-editor-pane admin-preview-pane">
+              <span class="admin-kicker">Preview</span>
+              <div id="preview" class="admin-preview article__body">
+                <p class="admin-muted">Nothing to preview yet.</p>
+              </div>
+            </div>
+          </div>
+          <p id="editor-help" class="admin-muted">
+            Markdown is saved exactly as written (line endings are normalized).
+            Preview is sanitized; the production site renders Markdown and
+            highlights code at build time.
+          </p>
+
+          <div id="form-errors" class="admin-error" role="alert" hidden></div>
+
+          <div class="admin-actions">
+            <button
+              type="submit"
+              id="save-draft"
+              class="admin-button admin-button--primary"
+            >
+              Save draft
+            </button>
+            <button type="button" id="publish" class="admin-button">
+              Publish
+            </button>
+            <button type="button" id="archive" class="admin-button" hidden>
+              Archive
+            </button>
+            <button
+              type="button"
+              id="delete"
+              class="admin-button admin-button--danger"
+            >
+              Delete file
+            </button>
+            <span class="admin-actions__spacer"></span>
+            <button type="button" id="export" class="admin-button" hidden>
+              Export Markdown
+            </button>
+            <button type="button" id="import-trigger" class="admin-button">
+              Import Markdown
+            </button>
+            <input
+              type="file"
+              id="import-file"
+              accept=".md,.markdown,text/markdown,text/plain"
+              hidden
+            />
+          </div>
+
+          <p id="local-save" class="admin-muted" aria-live="polite"></p>
+          <div class="admin-deployment">
+            <p id="deployment-text" class="admin-muted" aria-live="polite"></p>
+            <button
+              type="button"
+              id="check-deployment"
+              class="admin-button"
+              hidden
+            >
+              Check deployment
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <dialog
+      id="confirm-dialog"
+      class="admin-dialog"
+      aria-labelledby="confirm-title"
+    >
+      <form method="dialog" class="admin-dialog__form">
+        <h2 id="confirm-title">Confirm</h2>
+        <p id="confirm-message"></p>
+        <label id="confirm-input-label" class="admin-field" hidden>
+          <span id="confirm-input-caption"></span>
+          <input id="confirm-input" autocomplete="off" />
+        </label>
+        <p id="confirm-error" class="admin-error" role="alert" hidden></p>
+        <div class="admin-dialog__actions">
+          <button value="cancel" formnovalidate class="admin-button">
+            Cancel
+          </button>
+          <button
+            id="confirm-accept"
+            value="confirm"
+            class="admin-button admin-button--danger"
+          >
+            Confirm
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog
+      id="delete-dialog"
+      class="admin-dialog"
+      aria-labelledby="delete-title"
+    >
+      <form method="dialog" class="admin-dialog__form">
+        <h2 id="delete-title">Delete a file</h2>
+        <p>
+          Deleting a published file removes the public URL after the next build.
+          Drafts and archived copies are private repository files. Media is not
+          deleted automatically.
+        </p>
+        <fieldset id="delete-locations" class="admin-fieldset">
+          <legend>Choose the file</legend>
+        </fieldset>
+        <label class="admin-field">
+          <span>
+            Type <code id="delete-slug-label"></code> to confirm
+          </span>
+          <input id="delete-confirm" autocomplete="off" />
+        </label>
+        <p id="delete-error" class="admin-error" role="alert" hidden></p>
+        <div class="admin-dialog__actions">
+          <button value="cancel" formnovalidate class="admin-button">
+            Cancel
+          </button>
+          <button
+            id="delete-accept"
+            value="confirm"
+            class="admin-button admin-button--danger"
+          >
+            Delete
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog
+      id="media-dialog"
+      class="admin-dialog admin-dialog--wide"
+      aria-labelledby="media-title"
+    >
+      <div class="admin-dialog__form">
+        <header class="admin-dialog__head">
+          <div>
+            <p class="admin-kicker">Media</p>
+            <h2 id="media-title">Image library</h2>
+          </div>
+          <button type="button" id="media-close" class="admin-button">
+            Close
+          </button>
+        </header>
+
+        <div class="admin-segmented" role="group" aria-label="Media scope">
+          <button type="button" data-media-scope="draft" aria-pressed="true">
+            Draft media (private)
+          </button>
+          <button
+            type="button"
+            data-media-scope="published"
+            aria-pressed="false"
+          >
+            Published media (public)
+          </button>
+        </div>
+        <p id="media-hint" class="admin-muted"></p>
+        <p
+          id="media-status"
+          class="admin-muted"
+          role="status"
+          aria-live="polite"
+        ></p>
+
+        <div id="media-grid" class="admin-media-grid"></div>
+        <p id="media-empty" class="admin-muted" hidden>
+          No images in this library yet.
+        </p>
+
+        <form id="media-upload-form" class="admin-media-upload">
+          <label class="admin-field">
+            <span>Add images</span>
+            <input
+              type="file"
+              id="media-files"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+            />
+          </label>
+          <div id="upload-queue"></div>
+          <button type="submit" id="upload-button" class="admin-button">
+            Upload queued images
+          </button>
+        </form>
+
+        <fieldset class="admin-fieldset admin-media-insert">
+          <legend id="media-use-legend">Insert an image</legend>
+          <label class="admin-field">
+            <span>Alt text (required)</span>
+            <input id="media-alt" maxlength="200" />
+          </label>
+          <label class="admin-field">
+            <span>Caption (optional)</span>
+            <input id="media-caption" maxlength="400" />
+          </label>
+          <button
+            type="button"
+            id="media-use"
+            class="admin-button admin-button--primary"
+          >
+            Insert at cursor
+          </button>
+        </fieldset>
+        <input
+          type="file"
+          id="replace-file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          hidden
+        />
+      </div>
+    </dialog>
+
+    <template id="reference-template">
+      <fieldset class="admin-reference">
+        <legend>Reference</legend>
+        <label class="admin-field">
+          <span>Title</span>
+          <input data-ref-title maxlength="200" />
+        </label>
+        <label class="admin-field">
+          <span>URL</span>
+          <input data-ref-url type="url" maxlength="2000" inputmode="url" />
+        </label>
+        <label class="admin-field">
+          <span>Annotation (optional)</span>
+          <input data-ref-annotation maxlength="500" />
+        </label>
+        <button
+          type="button"
+          class="admin-button admin-button--danger"
+          data-ref-remove
+        >
+          Remove reference
+        </button>
+      </fieldset>
+    </template>
+
+    <template id="upload-row-template">
+      <div class="admin-upload-row">
+        <p class="admin-upload-row__name"></p>
+        <label class="admin-field admin-field--compact">
+          <span>Alt text (required)</span>
+          <input data-upload-alt maxlength="200" />
+        </label>
+        <label class="admin-field admin-field--compact">
+          <span>Caption (optional)</span>
+          <input data-upload-caption maxlength="400" />
+        </label>
+        <button type="button" class="admin-button" data-upload-remove>
+          Remove
+        </button>
+      </div>
+    </template>
+
+    <noscript>
+      <p class="admin-panel admin-panel--error">
+        The publishing desk needs JavaScript. The public site does not.
+      </p>
+    </noscript>
+  </main>
+
+  <script>
+    import "../../scripts/admin";
+  </script>
+</AdminLayout>

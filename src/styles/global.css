@@ -96,9 +96,10 @@ a:hover {
 .wordmark {
   color: var(--color-text-primary);
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: clamp(1.0625rem, 0.95rem + 0.6vw, 1.3125rem);
   font-weight: 600;
   line-height: 1.3;
+  letter-spacing: 0.01em;
   text-decoration-line: none;
 }
 
@@ -203,7 +204,7 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
 main {
   width: min(100% - 2 * var(--gutter), var(--container-max));
   margin-inline: auto;
-  padding-block: var(--space-8) var(--space-10);
+  padding-block: var(--space-8) var(--space-9);
 }
 
 .page-title {
@@ -211,6 +212,7 @@ main {
   font-size: var(--step-h1);
   font-weight: 600;
   line-height: var(--leading-heading);
+  text-wrap: balance;
 }
 
 .page-intro {
@@ -230,6 +232,7 @@ main {
   font-size: var(--step-display);
   font-weight: 600;
   line-height: 1.15;
+  text-wrap: balance;
 }
 
 .masthead__statement {
@@ -323,7 +326,7 @@ main {
   padding: 0.05em 0.55em;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background-color: var(--color-surface);
+  background-color: var(--color-surface-muted);
   color: var(--color-text-primary);
   font-size: 0.8125rem;
 }
@@ -337,42 +340,119 @@ main {
 }
 
 .site-footer {
-  padding-block: var(--space-6);
+  padding-block: var(--space-7)
+    calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--color-border);
   color: var(--color-text-secondary);
   font-size: 0.9375rem;
 }
 
 .site-footer__inner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-3) var(--space-6);
+  width: min(100% - 2 * var(--gutter), var(--container-max));
+  margin-inline: auto;
 }
 
-.site-footer nav ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
-  padding: 0;
-  list-style: none;
+.site-footer__grid {
+  display: grid;
+  gap: var(--space-6);
 }
 
+.site-footer nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, min-content));
+  gap: var(--space-6) clamp(2.5rem, 2rem + 3vw, 4.5rem);
+}
+
+@media (min-width: 40rem) {
+  .site-footer__grid {
+    grid-template-columns: minmax(18rem, 26rem) auto;
+    gap: clamp(3rem, 3rem + 4vw, 6rem);
+  }
+}
+
+.site-footer__wordmark {
+  display: inline-block;
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  text-decoration-line: none;
+}
+
+.site-footer__wordmark:hover {
+  color: var(--color-accent-text);
+}
+
+.site-footer__wordmark::after {
+  content: "";
+  display: block;
+  width: 2rem;
+  margin-top: var(--space-2);
+  border-top: 2px solid var(--color-accent);
+}
+
+.site-footer__tagline {
+  margin-top: var(--space-3);
+  max-width: 30rem;
+}
+
+.site-footer__follow {
+  margin-top: var(--space-2);
+}
+
+.site-footer__follow a {
+  color: var(--color-text-primary);
+}
+
+.site-footer__follow a:hover {
+  color: var(--color-accent-text);
+}
+
+.site-footer__group-label {
+  margin-bottom: var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-footer__group-label,
 .site-footer a {
   color: var(--color-text-primary);
 }
 
-.site-footer a:hover {
+.site-footer nav ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer nav a {
+  text-decoration-line: none;
+}
+
+.site-footer nav a:hover {
   color: var(--color-accent-text);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
 }
 
-.site-footer__note {
-  margin-inline-start: auto;
+.site-footer__base {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
 }
 
-@media (max-width: 35.99rem) {
-  .site-footer__note {
-    margin-inline-start: 0;
+@media (max-width: 47.99rem) {
+  .site-footer__wordmark::after {
+    content: none;
   }
 }
 
@@ -763,7 +843,7 @@ main {
   top: 52%;
   right: -8%;
   left: -8%;
-  border-top: 2px solid var(--color-accent);
+  border-top: 2px solid var(--color-highlight);
   transform: rotate(-2deg);
 }
 
@@ -803,9 +883,9 @@ main {
   display: inline-block;
   margin-bottom: var(--space-3);
   padding: 0.1em 0.6em;
-  border: 1px dashed var(--color-accent);
+  border: 1px dashed var(--color-highlight);
   border-radius: var(--radius-sm);
-  color: var(--color-accent-text);
+  color: var(--color-highlight-text);
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.08em;

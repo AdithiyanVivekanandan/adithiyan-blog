@@ -48,24 +48,21 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       if (!input || !status || !list || !form) return;
 
       let entries = null;
-      const loadIndex = function () {
-        if (entries !== null) return Promise.resolve(entries);
-        return fetch("/search-index.json")
-          .then(function (response) {
-            if (!response.ok) throw new Error("index unavailable");
-            return response.json();
-          })
-          .then(function (payload) {
-            entries = payload.articles;
-            return entries;
-          })
-          .catch(function () {
-            entries = [];
-            status.hidden = false;
-            status.textContent =
-              "Search could not load its index. Refresh the page or browse all articles instead.";
-            return entries;
-          });
+      const loadIndex = async function () {
+        if (entries !== null) return entries;
+        try {
+          const response = await fetch("/search-index.json");
+          if (!response.ok) throw new Error("index unavailable");
+          const payload = await response.json();
+          entries = payload.articles;
+          return entries;
+        } catch {
+          entries = [];
+          status.hidden = false;
+          status.textContent =
+            "Search could not load its index. Refresh the page or browse all articles instead.";
+          return entries;
+        }
       };
 
       const tokenize = function (query) {

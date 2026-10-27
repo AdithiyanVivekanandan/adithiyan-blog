@@ -42,11 +42,19 @@ const DRAFT_MARKERS = [
 
 const FIXTURE_NAME = `zz-${SLUG}.md`;
 const fixturePath = join(repoRoot, "src", "content", "articles", FIXTURE_NAME);
+const coverDir = join(repoRoot, "public", "images", SLUG);
+const coverPath = join(coverDir, "cover.png");
+const COVER_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
 
 const FIXTURE_BODY = `---
 title: ${JSON.stringify(TITLE)}
 slug: "${SLUG}"
 description: "Temporary build fixture exercising article, index and feed behavior; removed automatically after the test run."
+coverImage: "/images/${SLUG}/cover.png"
+coverAlt: "A neutral one-pixel cover used only by the isolated build probe."
 publishedAt: 2026-06-01T09:00:00Z
 status: published
 topics:
@@ -172,6 +180,8 @@ function totalScriptBytes(html) {
 mkdirSync(scratchDir, { recursive: true });
 rmSync(outDir, { recursive: true, force: true });
 rmSync(stagingDir, { recursive: true, force: true });
+mkdirSync(coverDir, { recursive: true });
+writeFileSync(coverPath, COVER_PNG);
 writeFileSync(fixturePath, FIXTURE_BODY);
 try {
   const configPath = writeIntegrationConfig();
@@ -199,6 +209,7 @@ const buildResult = { status: 0 };
 
 after(() => {
   rmSync(fixturePath, { force: true });
+  rmSync(coverDir, { recursive: true, force: true });
   rmSync(stagingDir, { recursive: true, force: true });
   rmSync(outDir, { recursive: true, force: true });
   const sync = spawnSync(astroBin, ["sync"], {
@@ -277,6 +288,12 @@ test("article page renders breadcrumb, kicker, metadata and a working TOC", () =
   assert.ok(html.includes(`By ${AUTHOR}`), "author attribution");
   assert.ok(html.includes("Published <time"), "publication date present");
   assert.match(html, /<p class="article__summary">Temp/, "summary present");
+  assert.ok(
+    html.includes('class="article__cover"') &&
+      html.includes(`src="/images/${SLUG}/cover.png"`) &&
+      html.includes("A neutral one-pixel cover used only by the isolated"),
+    "cover image renders with its alt text",
+  );
   assert.ok(
     (html.match(/<h1[\s>]/g) ?? []).length === 1,
     "exactly one h1 on the article page",
@@ -379,6 +396,11 @@ test("article metadata, canonical URL and sharing metadata are correct", () => {
     !html.includes('name="robots"'),
     "published articles are indexable",
   );
+  assert.ok(
+    !html.includes("Updated ") &&
+      !html.includes('property="article:modified_time"'),
+    "article pages do not display or advertise a revision date",
+  );
   assert.match(
     html,
     /<title>Integration probe: populated publication behavior — Technical Fieldnotes<\/title>/,
@@ -398,6 +420,7 @@ test("article JSON-LD matches the visible content", () => {
   assert.equal(jsonLd.author.name, AUTHOR);
   assert.equal(jsonLd.mainEntityOfPage, `${SITE}/articles/${SLUG}/`);
   assert.equal(jsonLd.articleSection, topicLabel("systems-tooling"));
+  assert.equal(jsonLd.image, `${SITE}/images/${SLUG}/cover.png`);
 });
 
 test("references and limitations sections render with their data", () => {
@@ -542,8 +565,12 @@ test("homepage switches to populated layout: featured, recent and lead region", 
   assert.ok(html.includes("territory--lead"), "lead region exists");
   assert.equal(
     (html.match(/Surveyed — no field notes yet/g) ?? []).length,
-    2,
-    "the two empty regions still report honestly",
+    0,
+    "empty regions are omitted from the populated homepage",
+  );
+  assert.ok(
+    !html.includes("territory--empty"),
+    "empty regions carry no marker because they are not rendered",
   );
   const counts = [
     ...html.matchAll(

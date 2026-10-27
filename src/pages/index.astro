@@ -17,8 +17,8 @@ const regions = APPROVED_TOPICS.map((slug) => {
     description: topicDescription(slug),
     count: matches.length,
   };
-});
-const leadRegion = regions.find((region) => region.count > 0);
+}).filter((region) => region.count > 0);
+const leadRegion = regions[0];
 ---
 
 <BaseLayout>
@@ -55,47 +55,40 @@ const leadRegion = regions.find((region) => region.count > 0);
     <p class="empty-state">No articles have been published yet.</p>
   )}
 
-  <section aria-labelledby="territory-heading">
-    <h2 id="territory-heading" class="section-heading">
-      Territory map
-    </h2>
-    <p class="page-intro">
-      Surveyed regions of this publication. Only regions with published notes
-      link onward.
-    </p>
-    <ul class="territory-map">
-      {regions.map((region) => (
-        <li
-          class={
-            "territory" +
-            (leadRegion && region.slug === leadRegion.slug
-              ? " territory--lead"
-              : "") +
-            (region.count === 0 ? " territory--empty" : "")
-          }
-        >
-          <h3 class="territory__name">
-            {region.count > 0 ? (
+  {regions.length > 0 && (
+    <section aria-labelledby="territory-heading">
+      <h2 id="territory-heading" class="section-heading">
+        Territory map
+      </h2>
+      <p class="page-intro">
+        Regions of this publication with published field notes. Choose one to
+        browse its articles.
+      </p>
+      <ul class="territory-map">
+        {regions.map((region) => (
+          <li
+            class={
+              "territory" +
+              (leadRegion && region.slug === leadRegion.slug
+                ? " territory--lead"
+                : "")
+            }
+          >
+            <h3 class="territory__name">
               <a href={`/topics/${region.slug}/`}>{region.label}</a>
-            ) : (
-              region.label
-            )}
-          </h3>
-          <p class="territory__scope">{region.description}</p>
-          {region.count > 0 ? (
+            </h3>
+            <p class="territory__scope">{region.description}</p>
             <p class="territory__count">
               <a href={`/topics/${region.slug}/`}>
                 {region.count}{" "}
                 {region.count === 1 ? "field note" : "field notes"}
               </a>
             </p>
-          ) : (
-            <p class="territory__count">Surveyed — no field notes yet</p>
-          )}
-        </li>
-      ))}
-    </ul>
-  </section>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
 
   <p class="view-all">
     <a href="/articles/">All articles</a>

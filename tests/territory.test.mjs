@@ -10,6 +10,10 @@ const distDir = fileURLToPath(new URL("../dist", import.meta.url));
 
 const PUBLISHED_TOPICS = ["reverse-engineering", "systems-tooling"];
 
+const POPULATED_TOPICS = APPROVED_TOPICS.filter((slug) =>
+  PUBLISHED_TOPICS.includes(slug),
+);
+
 const EMPTY_TOPICS = APPROVED_TOPICS.filter(
   (slug) => !PUBLISHED_TOPICS.includes(slug),
 );
@@ -26,7 +30,7 @@ function escapedLabel(slug) {
   return topicLabel(slug).replace(/&/g, "&amp;");
 }
 
-test("territory map renders the exact approved taxonomy in stable order", () => {
+test("territory map renders only populated regions in stable order", () => {
   const html = readDist("index.html");
   assert.ok(
     html.includes('aria-labelledby="territory-heading"'),
@@ -37,8 +41,8 @@ test("territory map renders the exact approved taxonomy in stable order", () => 
   ].map((match) => match[1].replace(/<[^>]+>/g, "").trim());
   assert.deepEqual(
     names,
-    APPROVED_TOPICS.map(escapedLabel),
-    "all five approved topics in taxonomy order, none invented or omitted",
+    POPULATED_TOPICS.map(escapedLabel),
+    "only populated approved topics, in taxonomy order, none invented or omitted",
   );
 });
 
@@ -66,7 +70,7 @@ test("the first populated region in taxonomy order leads the map", () => {
   );
 });
 
-test("empty regions link nowhere and report honest empty states", () => {
+test("empty regions are omitted from the homepage map", () => {
   const html = readDist("index.html");
   for (const slug of EMPTY_TOPICS) {
     assert.ok(
@@ -76,12 +80,12 @@ test("empty regions link nowhere and report honest empty states", () => {
   }
   assert.equal(
     (html.match(/Surveyed — no field notes yet/g) ?? []).length,
-    EMPTY_TOPICS.length,
-    "every empty region states it plainly",
+    0,
+    "no empty-region placeholder appears",
   );
   assert.ok(
-    html.includes("territory--empty"),
-    "empty regions carry the empty marker",
+    !html.includes("territory--empty"),
+    "empty regions carry no marker because they are not rendered",
   );
 });
 

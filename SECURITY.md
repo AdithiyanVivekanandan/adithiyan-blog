@@ -1,8 +1,10 @@
 # Security policy
 
-This is a static personal publication maintained by one person. There is no
-server-side code, user accounts, database, or analytics; the public site is
-pre-rendered HTML, CSS, and a small amount of JavaScript.
+This is a personal technical publication maintained by one person. The public
+site is pre-rendered HTML, CSS and a small amount of JavaScript. The private
+publishing desk at `/r1phun73r/` uses Cloudflare Access, Pages Functions and a
+GitHub App; it has one authorised editor, no reader accounts, no database and
+no analytics.
 
 ## Supported versions
 
@@ -32,9 +34,14 @@ maintenance of this publication.
 
 ## Scope
 
-In scope: defects in this repository that could expose unpublished drafts,
-inject executable content into built pages, leak secrets, or compromise
-reader privacy or site availability.
+In scope: defects in this repository that could bypass Cloudflare Access or
+the GitHub App boundary, expose unpublished drafts or media, inject executable
+content into built or preview pages, forge a write or CSRF token, leak secrets,
+or compromise reader privacy or site availability.
+
+The public site is static; reports that assume arbitrary server-side execution
+outside Pages Functions are out of scope. The admin desk is intentionally not
+indexed or linked from public navigation.
 
 Out of scope: vulnerabilities in third-party services (GitHub, the hosting
 provider, npm, or upstream packages) should be reported to those vendors;

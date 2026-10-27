@@ -10,7 +10,7 @@ The blog specifications (docs/04, docs/01, docs/05) require a static-first perso
 
 - Framework: Astro, static output (`output: "static"`), client-side JavaScript only when it provides real value.
 - Language: TypeScript with strict checking (`astro/tsconfigs/strict`).
-- Content workflow: Markdown/MDX in Git via Astro content collections, with frontmatter schema validation at build time. Drafts are excluded from every public output. No CMS at launch; a Git-based or headless CMS is a future decision requiring its own ADR and threat-model review.
+- Content workflow: Markdown/MDX in Git via Astro content collections, with frontmatter schema validation at build time. Drafts are excluded from every public output. No CMS at launch; the private publishing desk was later accepted in ADR 0003 after its own threat-model review.
 - Hosting: Vercel, connected to a private GitHub repository, deploying the static build output. Preview deployments must not expose unpublished content; production deploys come only from the protected default branch.
 - Package manager: npm with a committed lockfile and repeatable installs (`npm ci` in CI).
 - Source control: local Git repository now; push to a private GitHub remote before Session 2 CI work. Default branch protected; production deploys restricted.

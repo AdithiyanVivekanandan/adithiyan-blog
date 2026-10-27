@@ -1,37 +1,64 @@
 ---
-import { SITE_TITLE } from "../consts";
+import { AUTHOR, SITE_TITLE } from "../consts";
 
 const year = new Date().getUTCFullYear();
+
+const readingLinks = [
+  { href: "/articles/", label: "Articles" },
+  { href: "/topics/", label: "Topics" },
+  { href: "/archive/", label: "Archive" },
+];
+
+const siteLinks = [
+  { href: "/search/", label: "Search" },
+  { href: "/about/", label: "About" },
+  { href: "/colophon/", label: "Colophon" },
+];
 ---
 
 <footer class="site-footer">
   <div class="container site-footer__inner">
-    <p>{SITE_TITLE} — field notes on understanding systems.</p>
-    <nav aria-label="Footer">
-      <ul>
-        <li>
-          <a href="/">Home</a>
-        </li>
-        <li>
-          <a href="/articles/">Articles</a>
-        </li>
-        <li>
-          <a href="/topics/">Topics</a>
-        </li>
-        <li>
-          <a href="/archive/">Archive</a>
-        </li>
-        <li>
-          <a href="/about/">About</a>
-        </li>
-        <li>
-          <a href="/colophon/">Colophon</a>
-        </li>
-        <li>
-          <a href="/rss.xml">RSS</a>
-        </li>
-      </ul>
-    </nav>
-    <p class="site-footer__note">© {year} Adithiyan V. · No tracking.</p>
+    <div class="site-footer__grid">
+      <div class="site-footer__identity">
+        <a class="site-footer__wordmark" href="/">
+          {SITE_TITLE}
+        </a>
+        <p class="site-footer__tagline">
+          A personal technical publication about understanding systems,
+          maintained by {AUTHOR}
+        </p>
+        <p class="site-footer__follow">
+          Follow along at <a href="/rss.xml">RSS</a>.
+        </p>
+      </div>
+      <nav aria-label="Footer">
+        <div class="site-footer__group">
+          <p class="site-footer__group-label">Browse</p>
+          <ul>
+            {readingLinks.map((link) => (
+              <li>
+                <a href={link.href}>{link.label}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div class="site-footer__group">
+          <p class="site-footer__group-label">Site</p>
+          <ul>
+            {siteLinks.map((link) => (
+              <li>
+                <a href={link.href}>{link.label}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </nav>
+    </div>
+    <p class="site-footer__base">
+      <span>
+        © {year} {AUTHOR}
+      </span>
+      <span>No cookies, no tracking</span>
+    </p>
   </div>
 </footer>
