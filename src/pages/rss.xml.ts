@@ -1,7 +1,8 @@
 import type { APIRoute } from "astro";
 
-import { SITE_DESCRIPTION, SITE_TITLE } from "../consts";
+import { AUTHOR, SITE_DESCRIPTION, SITE_LANGUAGE, SITE_TITLE } from "../consts";
 import { getPublishedArticles } from "../lib/articles";
+import { topicLabel } from "../lib/topics";
 
 const escapeXml = (value: string): string =>
   value
@@ -20,6 +21,7 @@ export const GET: APIRoute = async ({ site }) => {
   const siteHref = site.href.endsWith("/") ? site.href : `${site.href}/`;
   const selfHref = new URL("rss.xml", siteHref).href;
   const newest = articles[0]?.data.publishedAt;
+  const year = new Date().getUTCFullYear();
 
   const items = articles
     .map((article) => {
@@ -31,6 +33,10 @@ export const GET: APIRoute = async ({ site }) => {
         `      <link>${url}</link>`,
         `      <guid isPermaLink="true">${url}</guid>`,
         `      <description>${escapeXml(article.data.description)}</description>`,
+        ...article.data.topics.map(
+          (topic) =>
+            `      <category>${escapeXml(topicLabel(topic))}</category>`,
+        ),
         `      <pubDate>${pubDate}</pubDate>`,
         "    </item>",
       ].join("\n");
@@ -44,7 +50,10 @@ export const GET: APIRoute = async ({ site }) => {
     `    <title>${escapeXml(SITE_TITLE)}</title>`,
     `    <link>${siteHref}</link>`,
     `    <description>${escapeXml(SITE_DESCRIPTION)}</description>`,
-    "    <language>en</language>",
+    `    <language>${SITE_LANGUAGE}</language>`,
+    `    <copyright>© ${year} ${escapeXml(AUTHOR)}</copyright>`,
+    "    <generator>Astro</generator>",
+    "    <ttl>60</ttl>",
     newest
       ? `    <lastBuildDate>${newest.toUTCString()}</lastBuildDate>`
       : null,

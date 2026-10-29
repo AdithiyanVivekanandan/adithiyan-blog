@@ -78,6 +78,12 @@ export function htmlError(error: unknown): Response {
       : cmsError.status === 503
         ? "Publishing desk not configured"
         : "Publishing desk unavailable";
+  const hint =
+    cmsError.status === 503
+      ? "<p>Set the missing variables in the Cloudflare Pages project and redeploy. For local work, run <code>npm run dev:cms</code>.</p>"
+      : cmsError.status === 401 || cmsError.status === 403
+        ? "<p>Sign in through the Cloudflare Access application that protects this hostname.</p>"
+        : "";
   const body = `<!doctype html>
 <html lang="en">
 <head>
@@ -90,6 +96,7 @@ export function htmlError(error: unknown): Response {
 <main>
 <h1>${title}</h1>
 <p>${escapeHtml(cmsError.message)}</p>
+${hint}
 <p><a href="/">Return to the publication</a></p>
 </main>
 </body>

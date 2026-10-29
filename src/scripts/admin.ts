@@ -415,6 +415,17 @@ async function start(): Promise<void> {
       (error.status === 503 || error.code === "not_configured")
     ) {
       showConfigError(error.message);
+    } else if (error instanceof ApiError && error.status === 404) {
+      const isAstroDev =
+        (location.hostname === "localhost" ||
+          location.hostname === "127.0.0.1") &&
+        location.port === "4321";
+      showConfigError(
+        isAstroDev
+          ? "Cloudflare Pages Functions are not served by `astro dev`. Stop it and run `npm run dev:cms`, then open http://localhost:8788/r1phun73r/."
+          : "The publishing API returned 404. Confirm Cloudflare Pages Functions are deployed at /r1phun73r/api/session.",
+      );
+      setStatus("The publishing API was not found.", "error");
     } else {
       handleApiError(error, "global");
       showConfigError(

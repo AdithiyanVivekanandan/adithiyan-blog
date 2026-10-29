@@ -65,8 +65,14 @@ import { APPROVED_TOPICS, topicLabel } from "../../lib/topics";
       <h2 id="config-error-title">The CMS is not ready</h2>
       <p id="config-error-message"></p>
       <p>
-        See <code>docs/cms.md</code> in the repository for the required
-        environment variables and Cloudflare Access setup.
+        Local development: run <code>npm run dev:cms</code> and open
+        <code>http://localhost:8788/r1phun73r/</code>. <code>astro dev</code>
+        does not serve Cloudflare Pages Functions.
+      </p>
+      <p>
+        Production: set the missing variables in Cloudflare Pages, then
+        redeploy. See <code>docs/cms.md</code> for the required environment
+        variables and Access setup.
       </p>
     </section>
 

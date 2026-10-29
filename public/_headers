@@ -48,3 +48,8 @@
 # Fingerprinted static assets only.
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Search index is a client-side utility, not a landing page.
+/search-index.json
+  X-Robots-Tag: noindex
+  Cache-Control: public, max-age=0, must-revalidate

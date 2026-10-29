@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { SITE_DESCRIPTION, SITE_TITLE } from "../src/consts.ts";
+import {
+  SITE_DESCRIPTION,
+  SITE_HOME_TITLE,
+  SITE_TITLE,
+} from "../src/consts.ts";
 
 const indexPath = new URL("../dist/index.html", import.meta.url);
 
@@ -27,8 +31,12 @@ test("homepage has a single h1 and the configured title and description", () => 
   const h1Count = (html.match(/<h1[\s>]/g) ?? []).length;
   assert.equal(h1Count, 1, "expected exactly one <h1>");
   assert.ok(
-    html.includes(`<title>${SITE_TITLE}</title>`),
-    "built title must match SITE_TITLE",
+    html.includes(`<title>${SITE_HOME_TITLE.replaceAll("&", "&amp;")}</title>`),
+    "built title must carry the search-facing homepage title",
+  );
+  assert.ok(
+    html.includes(`<h1>${SITE_TITLE}</h1>`),
+    "visible masthead keeps the publication name",
   );
   assert.ok(
     html.includes(SITE_DESCRIPTION),

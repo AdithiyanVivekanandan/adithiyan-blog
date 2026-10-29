@@ -112,9 +112,15 @@ Never put secrets in `PUBLIC_*` variables or client code.
 cp .dev.vars.example .dev.vars
 # fill local values; keep CMS_ENVIRONMENT=local, CMS_DEV_BYPASS=true
 # and CMS_DEV_EMAIL set to the local editor identity
-npm run build
-npx wrangler pages dev dist
+npm run cms:doctor
+npm run dev:cms
 ```
+
+`npm run dev:cms` builds the site and serves `dist/` plus the Pages Functions
+on `http://localhost:8788/r1phun73r/`. Article loading and saving also need the
+GitHub App variables; without them the desk opens but the article API returns
+`503 not_configured`. `cms:doctor` prints which GitHub variables are missing
+without revealing their values.
 
 `wrangler` requires its install scripts to be approved by the package manager.
 The bypass requires `CMS_DEV_BYPASS=true`, `CMS_ENVIRONMENT=local` and a
@@ -122,8 +128,16 @@ localhost hostname. It is always rejected when `CMS_ENVIRONMENT=production`
 and on any Pages deployment that has not explicitly opted into local mode.
 Production must set `CMS_ENVIRONMENT=production`.
 
-Static page editing can still use `npm run dev`; API calls need the Pages
-Functions runtime.
+`npm run dev` (Astro) serves the public site and the static admin shell, but it
+does not serve `/r1phun73r/api/*`; those requests return 404. Use `dev:cms` when
+working on the desk.
+
+A production `/r1phun73r/api/session` response of `503 not_configured` means
+Cloudflare Pages is missing one or more of `CF_ACCESS_TEAM_DOMAIN`,
+`CF_ACCESS_AUD`, `CMS_ALLOWED_EMAILS` or `CMS_CSRF_SECRET`. The response names
+the missing variables without exposing values. The Access application for
+`/r1phun73r/*` must also exist and send the Access JWT. Set the variables in the
+Pages project, then redeploy before signing in.
 
 ## Editorial workflow
 

@@ -1,8 +1,8 @@
 ---
-title: "Understanding Windows Executables"
-subtitle: "From compiled code and PE structure to runtime behavior"
+title: "Windows Executable Analysis: PE Format and Runtime"
+subtitle: "A reproducible walkthrough of PE32+ headers, imports, x86-64 startup code and Ghidra disassembly"
 slug: "understanding-windows-executables"
-description: "An introduction to Windows executable analysis, examining compilation, PE metadata, runtime support, assembly, imports, and the relationship between source code and a compiled binary."
+description: "Analyze a Windows executable from C source to PE32+ structure, imports, startup code and Ghidra disassembly, with reproducible commands and evidence."
 status: published
 publishedAt: 2026-10-17T20:00:00Z
 topics:
@@ -41,13 +41,13 @@ A Windows executable is more than a collection of machine instructions. It has a
 
 Understanding these components is fundamental to reverse engineering. Whether the objective is to investigate an unfamiliar application, understand a program's behavior, or analyse a suspicious binary, the starting point is the same: establish what the file contains and distinguish that evidence from assumptions about what it does.
 
-This article examines a small Windows executable built from C source code. Using MinGW-w64, a Windows virtual machine, and Ghidra, I compare the original source with the compiled file, inspect its machine instructions, and examine its imported functions.
+This guide to Windows executable analysis is part of the [Reverse Engineering](/topics/reverse-engineering/) and [Systems & Tooling](/topics/systems-tooling/) fieldnotes. It examines a small Windows executable built from C source code. Using MinGW-w64, a Windows virtual machine, and Ghidra, I compare the original source with the compiled file, inspect its machine instructions, and examine its imported functions.
 
-The goal is not to reverse engineer a complex application. It is to establish a reliable foundation for examining Windows binaries.
+The goal is not to reverse engineer a complex application. It is to establish a reliable foundation for examining Windows binaries. By the end, you should be able to identify the PE32+ header and section table, trace the entry point into `mainCRTStartup` and `main`, and follow an imported call such as `puts` to the import table.
 
 The scope is deliberate. This article traces one executable from its PE header to the call that prints its message: the entry point, the runtime startup code, `main`, the string in `.rdata`, and the `puts` call as far as the import table. It does not analyze the C runtime’s implementation of `puts` or the Windows console-output path. Each claim is labelled Verified, Observed, Inferred or Not examined, so you can see what the evidence supports.
 
-## 1. The program and its environment
+## 1. The test program and analysis environment
 
 The experiment uses a deliberately small C program:
 
@@ -78,7 +78,7 @@ The environment used for this experiment was:
 
 The executable was built on Linux and executed inside the Windows guest. Ghidra was used to inspect the same binary.
 
-## 2. Compiling a Windows executable
+## 2. Compiling a Windows executable with MinGW-w64
 
 The compiler command was:
 
@@ -102,7 +102,7 @@ Consequently, the final executable can contain functions and instructions that w
 
 This distinction becomes important when examining compiler-generated startup and runtime support.
 
-### Identifying the executable format
+### Identifying the PE32+ executable format
 
 After compilation, I ran:
 
@@ -147,7 +147,7 @@ The section count also illustrates why source-code size is not a reliable indica
   </figcaption>
 </figure>
 
-## 3. Verifying the executable in Windows
+## 3. Verifying the Windows executable in a VM
 
 After compiling the file, I transferred `hello.c`, `hello.exe`, and `SHA256SUMS` from the Linux host to the Windows FLARE-VM guest using a mounted ISO image.
 
@@ -215,7 +215,7 @@ This confirms that the executable on the Windows guest is byte-identical to the 
 
 Hash verification is useful when transferring samples between analysis systems. However, a matching hash does not establish that a program is safe or trustworthy. It establishes file identity between the copies being compared.
 
-## 4. Examining the executable in Ghidra
+## 4. Examining the PE executable in Ghidra
 
 With the executable verified and running, the next step was to examine its compiled representation.
 
@@ -255,7 +255,7 @@ This is an important distinction between source code and a compiled binary. The 
 
 GCC documents `__main` as runtime support associated with initialization, including global constructors on applicable targets. This binary’s `__main` is examined in Section 7.
 
-### Why does the reconstructed signature differ?
+### Why the Ghidra signature differs from the C source
 
 The original source declares:
 
@@ -279,7 +279,7 @@ A decompiler is valuable for interpreting machine code, but its output remains a
 
 The startup code does pass three values to `main`. At the machine-code level it loads `argc`, `argv` and `envp` into `ECX`, `RDX` and `R8` before the call (Section 6). That explains why Ghidra reconstructs a three-parameter prototype. It does not change the source, which declares `int main(void)`. The reconstructed signature is an interpretation of the call site, not a recovered declaration.
 
-## 5. Reading the assembly
+## 5. Reading the x86-64 assembly
 
 The Ghidra Listing view showed the following instructions around `main`:
 
@@ -301,7 +301,7 @@ Ghidra labels the `MOV` at `0x140001594` with the parameter alias `_Argc` in som
 
 These instructions provide a lower-level view of the function reconstructed by the decompiler.
 
-### Stack setup and alignment
+### x86-64 stack setup and alignment
 
 The first three instructions are:
 
@@ -332,7 +332,7 @@ Given the entry assumption, the frame sizes along this path are consistent with 
 
 Status: **Verified** for the arithmetic along this path, **Inferred** for the entry assumption.
 
-### Passing the string to `puts`
+### Passing the string to `puts` through the import table
 
 The next sequence is:
 
@@ -356,7 +356,7 @@ The string is represented in the executable's data, its address is obtained, and
 
 The relationship between source code and assembly is not necessarily one statement to one instruction. Instead, the compiler produces instructions that implement the required behavior within the constraints of the target architecture and calling convention.
 
-### Returning from the function
+### Returning from `main`
 
 The final sequence is:
 
@@ -373,11 +373,11 @@ The function then restores the stack pointer and saved frame pointer before exec
 
 Returning from `main` is not the same operation as directly terminating a Windows process. The return value is passed back to the caller; runtime startup and termination code determine what happens afterward.
 
-## 6. The entry point and runtime startup
+## 6. The PE entry point and Windows runtime startup
 
 > A conventional C executable does not begin at `main`. The PE Optional Header’s `AddressOfEntryPoint` field gives an RVA, a location relative to the image base. The virtual address is the image base plus that RVA.
 
-### 6.1 Resolving the entry point
+### 6.1 Resolving the PE entry point
 
 | Field                       | Value                                | Where                                     |
 | --------------------------- | ------------------------------------ | ----------------------------------------- |
@@ -407,7 +407,7 @@ It reserves stack space, stores `0` in `__mingw_app_type` (the console-applicati
 
 Status: the call chain, the argument loads and the `exit` call are **Verified** by disassembly. Returning from `main` therefore reaches `exit`, not a direct process termination. `__tmainCRTStartup`’s other branches (lock handling, TLS callbacks, error exits) were **Not examined**.
 
-### 6.3 Execution path with addresses
+### 6.3 Execution path from entry point to `main`
 
 The static call relationships in this binary are:
 
@@ -436,7 +436,7 @@ PE header: AddressOfEntryPoint 0x1440 + ImageBase 0x140000000
 
 Static call relationships traced in this binary. Execution beyond `__imp_puts` and beyond `exit` is outside what was examined.
 
-## 7. What `__main` does in this build
+## 7. What `__main` does in a MinGW-w64 build
 
 GCC documents `__main` as initialization support associated with global constructors on applicable targets. That describes the symbol’s purpose in general. This section records what this binary’s copy does.
 
@@ -464,7 +464,7 @@ The import table does not list `libgcc_s_dw2-1.dll`. That is consistent with the
 
 <!-- TODO(author): include the Ghidra screenshots for `__main`, `__do_global_ctors` and `__gcc_register_frame` here (spec §7 / §14.1). -->
 
-## 8. Understanding imported functions and the `puts` call
+## 8. Windows imports and the `puts` call
 
 Ghidra’s Imports tree showed API-set contracts, including:
 
@@ -515,7 +515,7 @@ The API-set name is also significant. An API-set contract is not necessarily the
 
 The displayed imports suggest a relationship with the Universal C Runtime’s standard-I/O functionality. Determining the exact runtime configuration and implementation path for this particular build requires further inspection.
 
-### Following the call to the import boundary
+### Following `puts` to the import address table
 
 The call in `main` is traced through the actual addresses:
 
@@ -533,7 +533,7 @@ Status: **Verified** from the call site to the import-table entry. Everything af
 
 More generally, imports help identify dependencies and interfaces used by a binary. They do not, by themselves, establish which functions execute during a particular run or explain the complete behavior of the program.
 
-## 9. What the experiment establishes
+## 9. What this Windows executable analysis establishes
 
 The experiment provides several independently observed facts about the same executable.
 
@@ -558,7 +558,7 @@ The distinction between observed facts and unresolved questions is important in 
 
 A reliable analysis records what the evidence shows and avoids turning plausible explanations into verified findings.
 
-## 10. Reproducing the experiment
+## 10. Reproducing the Windows executable analysis
 
 The core experiment can be reproduced with a Windows-targeted MinGW-w64 compiler, a Windows test environment, and Ghidra.
 
@@ -600,7 +600,7 @@ The experiment used a mounted ISO for file transfer, but another controlled tran
 
 A rebuild may produce a different binary because compiler configuration, runtime linkage, and build details can affect the output. Record the environment and observed results rather than expecting another build to have the same hash or identical layout. A rebuild may not match these addresses; recompute them from your own binary using the VA = ImageBase + RVA relationship.
 
-## Conclusion
+## Conclusion: from PE structure to runtime behavior
 
 Examining one small Windows executable connects several ideas that run through reverse engineering. The PE header’s entry point leads to the compiler’s startup code, not to `main`. That startup code prepares the runtime, passes `argc`, `argv` and `envp` to `main`, and sends `main`’s return value to `exit`. Inside `main`, a call to `__main` runs toolchain-supplied initialization that the source never requested. The greeting is a string in `.rdata`, and the `puts` call reaches the import table through a local thunk.
 

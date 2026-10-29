@@ -1,6 +1,6 @@
 ---
 import { render } from "astro:content";
-import { AUTHOR } from "../../consts";
+import { AUTHOR, AUTHOR_GITHUB, SITE_TITLE } from "../../consts";
 import ArticleCard from "../../components/ArticleCard.astro";
 import ArticlePager from "../../components/ArticlePager.astro";
 import ArticleToc from "../../components/ArticleToc.astro";
@@ -18,6 +18,7 @@ import {
   type ArticleEntry,
 } from "../../lib/articles";
 import { topicLabel } from "../../lib/topics";
+import { articleStructuredData, breadcrumbStructuredData } from "../../lib/seo";
 import "../../styles/article.css";
 
 interface Props {
@@ -47,23 +48,36 @@ const { previous, next } = getAdjacentArticles(entry, published);
 const related = getRelatedArticles(entry, published);
 
 const publishedAt = data.publishedAt;
-const minutes = readingTimeMinutes(entry.body ?? "");
-const canonical = new URL(`/articles/${data.slug}/`, Astro.site);
+const body = entry.body ?? "";
+const wordCount = body.split(/\s+/).filter(Boolean).length;
+const minutes = readingTimeMinutes(body);
+const articlePath = `/articles/${data.slug}/`;
+const site = Astro.site;
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  headline: data.title,
-  description: data.description,
-  datePublished: publishedAt.toISOString(),
-  ...(data.updatedAt ? { dateModified: data.updatedAt.toISOString() } : {}),
-  ...(data.coverImage
-    ? { image: new URL(data.coverImage, Astro.site).href }
-    : {}),
-  author: { "@type": "Person", name: AUTHOR },
-  mainEntityOfPage: canonical.href,
-  articleSection: topicLabel(data.topics[0]),
-};
+if (!site) {
+  throw new Error("astro.config.mjs must define site for article metadata");
+}
+
+const structuredData = [
+  articleStructuredData({
+    site,
+    slug: data.slug,
+    title: data.title,
+    description: data.description,
+    publishedAt,
+    updatedAt: data.updatedAt,
+    coverImage: data.coverImage,
+    topics: data.topics,
+    references: data.references,
+    wordCount,
+    minutes,
+  }),
+  breadcrumbStructuredData(site, [
+    { name: "Home", path: "/" },
+    { name: "Articles", path: "/articles/" },
+    { name: data.title, path: articlePath },
+  ]),
+];
 ---
 
 <BaseLayout
@@ -72,6 +86,11 @@ const jsonLd = {
   type="article"
   publishedAt={publishedAt}
   updatedAt={data.updatedAt}
+  image={data.coverImage}
+  imageAlt={data.coverAlt}
+  articleSection={topicLabel(data.topics[0])}
+  articleTags={data.topics.map((slug) => topicLabel(slug))}
+  structuredData={structuredData}
 >
   <article class="article">
     <nav class="breadcrumb" aria-label="Breadcrumb">
@@ -90,14 +109,24 @@ const jsonLd = {
       <p class="article__topic">
         <span class="article__label">
           {articleTypeLabel(data.articleType)} ·{" "}
-          {data.topics.map((slug) => topicLabel(slug)).join(" · ")}
+          {data.topics.map((slug, index) => (
+            <>
+              {index > 0 && " · "}
+              <a href={`/topics/${slug}/`}>{topicLabel(slug)}</a>
+            </>
+          ))}
         </span>
       </p>
       <h1 class="article__title">{data.title}</h1>
       {data.subtitle && <p class="article__subtitle">{data.subtitle}</p>}
       <p class="article__summary">{data.description}</p>
       <p class="article__meta">
-        <span>By {AUTHOR}</span>
+        <span>
+          By{" "}
+          <a href="/about/" rel="author">
+            {AUTHOR}
+          </a>
+        </span>
         <span>
           Published{" "}
           <time datetime={isoDateOnly(publishedAt)}>
@@ -190,17 +219,26 @@ const jsonLd = {
       </section>
     )}
 
+    <section class="article__footer-section" aria-labelledby="author-heading">
+      <h2 id="author-heading">About the author</h2>
+      <p>
+        {AUTHOR} writes {SITE_TITLE}, a personal technical publication about
+        understanding systems through reproducible notes, evidence and stated
+        limitations.
+      </p>
+      <p>
+        <a href="/about/">About the author</a> ·{" "}
+        <a href={AUTHOR_GITHUB} rel="me external noopener noreferrer">
+          GitHub
+        </a>
+      </p>
+    </section>
+
     <ArticlePager previous={previous} next={next} />
 
     <p class="article__back">
       <a href="/articles/">Back to all articles</a>
     </p>
-
-    <script
-      is:inline
-      type="application/ld+json"
-      set:html={JSON.stringify(jsonLd).replace(/</g, "\\u003c")}
-    />
   </article>
   <script>
     const blocks = document.querySelectorAll<HTMLElement>("pre.astro-code");

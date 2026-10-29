@@ -2,13 +2,33 @@
 import ArticleCard from "../../components/ArticleCard.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getPublishedArticles } from "../../lib/articles";
+import { collectionPageStructuredData } from "../../lib/seo";
 
 const articles = await getPublishedArticles();
+const site = Astro.site;
+
+if (!site) {
+  throw new Error("astro.config.mjs must define site for article metadata");
+}
+
+const structuredData = [
+  collectionPageStructuredData(site, {
+    path: "/articles/",
+    name: "Articles",
+    description:
+      "All published articles from Technical Fieldnotes, newest first.",
+    articles: articles.map((article) => ({
+      slug: article.data.slug,
+      title: article.data.title,
+    })),
+  }),
+];
 ---
 
 <BaseLayout
   title="Articles"
   description="All published articles from Technical Fieldnotes, newest first."
+  structuredData={structuredData}
 >
   <h1 class="page-title">Articles</h1>
   <p class="page-intro">Newest first.</p>

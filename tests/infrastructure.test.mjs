@@ -91,7 +91,6 @@ test("sitemap.xml lists exactly the public routes", () => {
     `${SITE}/articles/`,
     `${SITE}/articles/understanding-windows-executables/`,
     `${SITE}/colophon/`,
-    `${SITE}/search/`,
     `${SITE}/topics/`,
     `${SITE}/topics/reverse-engineering/`,
     `${SITE}/topics/systems-tooling/`,
@@ -111,10 +110,17 @@ test("sitemap.xml lists exactly the public routes", () => {
   for (const marker of MARKERS) {
     assert.ok(!xml.includes(marker), `sitemap must not contain ${marker}`);
   }
-  assert.deepEqual(
-    [...xml.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1]),
-    ["2026-10-17"],
-    "lastmod appears only for the article, set to its publication date",
+  const lastmods = [...xml.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map(
+    (m) => m[1],
+  );
+  assert.equal(
+    lastmods.length,
+    7,
+    "collection and article entries carry a date",
+  );
+  assert.ok(
+    lastmods.every((value) => value === "2026-10-17"),
+    "every lastmod reflects the newest publication date",
   );
 });
 
@@ -128,7 +134,7 @@ test("robots.txt allows public crawling, blocks the admin desk and points at the
 
 test("404 page exists with noindex, landmarks and recovery links", () => {
   const html = readDist("404.html");
-  assert.match(html, /<meta name="robots" content="noindex"/);
+  assert.match(html, /<meta name="robots" content="noindex[^"]*"/);
   assert.match(html, /<title>Page not found — Technical Fieldnotes<\/title>/);
   assert.match(html, /<a class="skip-link" href="#main">/);
   assert.match(html, /<header class="site-header">/);
@@ -165,7 +171,7 @@ test("public pages advertise RSS and carry social metadata", () => {
       `${relative}: RSS discovery link`,
     );
     assert.ok(
-      html.includes('name="twitter:card" content="summary"'),
+      html.includes('name="twitter:card" content="summary_large_image"'),
       `${relative}: twitter card`,
     );
     assert.ok(
@@ -286,12 +292,16 @@ test("favicon exists and is referenced from every public page", () => {
 test("about page states the correction policy", () => {
   const html = readDist("about/index.html");
   assert.ok(
-    html.includes("Material errors are corrected in the article itself"),
+    html.includes("Material corrections are made in the article itself"),
     "correction policy must promise in-place correction",
   );
   assert.ok(
-    html.includes("marked with an updated date"),
-    "correction policy must reference the updated-date mechanism",
+    html.includes("limitations or references where relevant"),
+    "correction policy must explain where the change is recorded",
+  );
+  assert.ok(
+    html.includes('href="https://github.com/AdithiyanVivekanandan"'),
+    "about page links the public author profile",
   );
 });
 

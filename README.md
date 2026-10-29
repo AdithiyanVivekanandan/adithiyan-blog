@@ -17,9 +17,13 @@ See [ADR 0001](docs/adr/0001-technology-stack-and-content-workflow.md).
 
 ```sh
 npm ci                # repeatable install from lockfile
-npm run dev           # local development server
+npm run dev           # Astro-only local dev server (no CMS API)
+npm run dev:cms       # build and serve the full Pages app, including CMS API
+npm run cms:doctor    # validate the local .dev.vars CMS setup
 npm run build         # production build to dist/
 npm run preview       # serve the production build locally
+npm run indexnow      # submit canonical URLs to IndexNow after deployment
+npm run indexnow:dry  # print the IndexNow payload without sending it
 
 # quality gates (all are also run by CI)
 npm run format        # format the repository with Prettier (write)
@@ -87,13 +91,20 @@ commits to `src/content/articles/` and lets Cloudflare Pages rebuild. The CMS
 never deploys directly and never claims a commit is live without deployment
 evidence.
 
-Local API development uses Pages Functions:
+Local API development uses Pages Functions. `astro dev` does not serve the
+`/r1phun73r/api/*` routes, so the desk must be served by Wrangler:
 
 ```sh
 cp .dev.vars.example .dev.vars
-npm run build
-npx wrangler pages dev dist
+# set CMS_ENVIRONMENT=local, CMS_DEV_BYPASS=true and CMS_DEV_EMAIL
+npm run cms:doctor
+npm run dev:cms
+# open http://localhost:8788/r1phun73r/
 ```
+
+`npm run dev:cms` builds the site and serves `dist/` plus the Pages Functions.
+Article loading and saving also require the GitHub App variables in
+`.dev.vars`; without them the desk can open but cannot read or write articles.
 
 ## Configuration before launch
 

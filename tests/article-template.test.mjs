@@ -282,10 +282,17 @@ test("article page renders breadcrumb, kicker, metadata and a working TOC", () =
   const html = readBuilt(`articles/${SLUG}/index.html`);
   assert.ok(html.includes('aria-label="Breadcrumb"'), "breadcrumb present");
   assert.ok(
-    html.includes("Investigation · Systems &amp; Tooling · AI Engineering"),
-    "topic kicker names the declared article type, not a fixed label",
+    html.includes("Investigation ·") &&
+      html.includes(
+        '<a href="/topics/systems-tooling/">Systems &amp; Tooling</a>',
+      ) &&
+      html.includes('<a href="/topics/ai-engineering/">AI Engineering</a>'),
+    "topic kicker names the article type and links its topics",
   );
-  assert.ok(html.includes(`By ${AUTHOR}`), "author attribution");
+  assert.ok(
+    html.includes(`By <a href="/about/" rel="author">${AUTHOR}</a>`),
+    "author attribution links to the author page",
+  );
   assert.ok(html.includes("Published <time"), "publication date present");
   assert.match(html, /<p class="article__summary">Temp/, "summary present");
   assert.ok(
@@ -393,8 +400,10 @@ test("article metadata, canonical URL and sharing metadata are correct", () => {
     "article:published_time matches frontmatter",
   );
   assert.ok(
-    !html.includes('name="robots"'),
-    "published articles are indexable",
+    html.includes(
+      'name="robots" content="index, follow, max-image-preview:large"',
+    ),
+    "published articles explicitly allow indexing and large image previews",
   );
   assert.ok(
     !html.includes("Updated ") &&
@@ -413,14 +422,35 @@ test("article JSON-LD matches the visible content", () => {
     /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
   )?.[1];
   assert.ok(script, "JSON-LD block present");
-  const jsonLd = JSON.parse(script);
-  assert.equal(jsonLd["@type"], "BlogPosting");
-  assert.equal(jsonLd.headline, TITLE);
-  assert.equal(jsonLd.datePublished, PUBLISHED_AT.toISOString());
-  assert.equal(jsonLd.author.name, AUTHOR);
-  assert.equal(jsonLd.mainEntityOfPage, `${SITE}/articles/${SLUG}/`);
-  assert.equal(jsonLd.articleSection, topicLabel("systems-tooling"));
-  assert.equal(jsonLd.image, `${SITE}/images/${SLUG}/cover.png`);
+  const graph = JSON.parse(script)["@graph"];
+  assert.ok(Array.isArray(graph), "JSON-LD exposes a linked graph");
+  const node = (type) => graph.find((candidate) => candidate["@type"] === type);
+  const article = node("BlogPosting");
+  const person = node("Person");
+  const breadcrumb = node("BreadcrumbList");
+  assert.ok(article, "BlogPosting node present");
+  assert.ok(person, "Person node present");
+  assert.ok(breadcrumb, "BreadcrumbList node present");
+  assert.equal(article.headline, TITLE);
+  assert.equal(article.datePublished, PUBLISHED_AT.toISOString());
+  assert.equal(article.author["@id"], person["@id"]);
+  assert.equal(article.publisher["@id"], person["@id"]);
+  assert.deepEqual(article.mainEntityOfPage, {
+    "@type": "WebPage",
+    "@id": `${SITE}/articles/${SLUG}/`,
+  });
+  assert.equal(article.articleSection, topicLabel("systems-tooling"));
+  assert.deepEqual(article.image, [`${SITE}/images/${SLUG}/cover.png`]);
+  assert.equal(article.isPartOf["@id"], `${SITE}/#blog`);
+  assert.ok(article.wordCount > 0, "word count is recorded");
+  assert.match(article.timeRequired, /^PT\d+M$/, "reading time is ISO 8601");
+  assert.equal(article.isAccessibleForFree, true);
+  assert.equal(article.citation.length, 2, "references become citations");
+  assert.deepEqual(
+    breadcrumb.itemListElement.map((item) => item.name),
+    ["Home", "Articles", TITLE],
+  );
+  assert.ok(!("dateModified" in article), "no revision date is emitted");
 });
 
 test("references and limitations sections render with their data", () => {
@@ -528,8 +558,8 @@ test("sitemap lists the article routes, lastmod and the non-empty topics", () =>
     );
   }
   assert.ok(
-    locs.includes(`${SITE}/topics/`) && locs.includes(`${SITE}/search/`),
-    "directory and search routes still listed",
+    locs.includes(`${SITE}/topics/`) && !locs.includes(`${SITE}/search/`),
+    "directory is listed while the noindex search page stays out",
   );
   const escapedSite = SITE.replace(/\./g, "\\.");
   const articleBlock = xml.match(
@@ -673,7 +703,10 @@ test("search index exposes exactly the published articles, newest first", () => 
     "both published articles in newest-first order",
   );
   const real = payload.articles[0];
-  assert.equal(real.title, "Understanding Windows Executables");
+  assert.equal(
+    real.title,
+    "Windows Executable Analysis: PE Format and Runtime",
+  );
   assert.equal(real.date, "2026-10-17");
   const fixture = payload.articles[1];
   assert.equal(fixture.title, TITLE);

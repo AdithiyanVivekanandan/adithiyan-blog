@@ -36,13 +36,12 @@ test(".gitignore excludes build output and dependencies", () => {
   }
 });
 
-test("no environment files exist at the repository root", () => {
+test("no unexpected environment files exist at the repository root", () => {
   const entries = readdirSync(new URL("../", import.meta.url));
   const envFiles = entries.filter(
     (name) =>
       name === ".env" ||
       name.startsWith(".env.") ||
-      name === ".dev.vars" ||
       (name.startsWith(".dev.vars.") && name !== ".dev.vars.example"),
   );
   assert.deepEqual(

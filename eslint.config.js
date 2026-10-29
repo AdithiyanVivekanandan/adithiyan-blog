@@ -17,7 +17,12 @@ export default [
   ...tseslint.configs.recommended,
   ...astro.configs["flat/recommended"],
   {
-    files: ["tests/**/*.mjs", "*.config.mjs", "eslint.config.js"],
+    files: [
+      "tests/**/*.mjs",
+      "scripts/**/*.mjs",
+      "*.config.mjs",
+      "eslint.config.js",
+    ],
     languageOptions: {
       globals: { ...globals.node },
     },

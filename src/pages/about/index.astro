@@ -1,23 +1,47 @@
 ---
-import { AUTHOR, SITE_TITLE } from "../../consts";
+import { AUTHOR, AUTHOR_GITHUB, SITE_TITLE } from "../../consts";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import {
   APPROVED_TOPICS,
   topicDescription,
   topicLabel,
 } from "../../lib/topics";
+import { aboutPageStructuredData } from "../../lib/seo";
+
+const title = `About ${AUTHOR}`;
+const description = `About ${AUTHOR} and ${SITE_TITLE}: editorial standards, subject areas and how evidence, corrections and limitations are recorded.`;
+const site = Astro.site;
+
+if (!site) {
+  throw new Error("astro.config.mjs must define site for about metadata");
+}
+
+const structuredData = [
+  aboutPageStructuredData(site, { name: title, description }),
+];
 ---
 
 <BaseLayout
-  title="About"
-  description={`About ${SITE_TITLE}: a personal technical publication about understanding systems, written and maintained by ${AUTHOR}`}
+  title={title}
+  description={description}
+  structuredData={structuredData}
 >
   <h1 class="page-title">About</h1>
 
   <div class="about-prose">
     <p>
       {SITE_TITLE} is a personal technical publication about understanding
-      systems. It is written and maintained by {AUTHOR}
+      systems. It is written and maintained by {AUTHOR}.
+    </p>
+
+    <h2>About the author</h2>
+    <p>
+      {AUTHOR} writes and maintains {SITE_TITLE}. The publication's source,
+      article history and corrections are public on{" "}
+      <a href={AUTHOR_GITHUB} rel="me external noopener noreferrer">
+        GitHub
+      </a>
+      .
     </p>
 
     <h2>Subject areas</h2>
@@ -36,13 +60,13 @@ import {
     <h2>How articles are written</h2>
     <p>
       Each article states the technical context it was verified in, the evidence
-      or commands it relies on, and its known limitations. A material update
-      adds an updated date on the article itself. Articles end with references
-      to primary sources where relevant.
+      or commands it relies on, and its known limitations. Articles end with
+      references to primary sources where relevant.
     </p>
     <p>
-      Material errors are corrected in the article itself, marked with an
-      updated date.
+      Material corrections are made in the article itself, with the change noted
+      in the article's limitations or references where relevant. The
+      publication's <a href="/rss.xml">RSS feed</a> carries new articles.
     </p>
   </div>
 </BaseLayout>

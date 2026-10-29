@@ -26,7 +26,9 @@ const minutes = readingTimeMinutes(article.body ?? "");
   </Heading>
   <p class="article-card__summary">{data.description}</p>
   <p class="article-card__meta">
-    <span class="topic-chip">{topicLabel(data.topics[0])}</span>
+    <span class="topic-chip">
+      <a href={`/topics/${data.topics[0]}/`}>{topicLabel(data.topics[0])}</a>
+    </span>
     {publishedAt && (
       <time datetime={isoDateOnly(publishedAt)}>
         {formatArticleDate(publishedAt)}

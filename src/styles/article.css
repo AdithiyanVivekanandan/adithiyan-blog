@@ -66,6 +66,16 @@
   color: var(--color-highlight-text);
 }
 
+.article__topic a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.article__topic a:hover,
+.article__topic a:focus-visible {
+  text-decoration: underline;
+}
+
 .article__context .article__label {
   color: var(--color-accent-text);
 }

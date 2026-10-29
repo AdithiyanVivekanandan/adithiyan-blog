@@ -331,6 +331,16 @@ main {
   font-size: 0.8125rem;
 }
 
+.topic-chip a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.topic-chip a:hover,
+.topic-chip a:focus-visible {
+  text-decoration: underline;
+}
+
 .empty-state {
   margin-top: var(--space-6);
   padding: var(--space-5);

@@ -3,7 +3,14 @@ import "../styles/tokens.css";
 import "../styles/global.css";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
-import { SITE_DESCRIPTION, SITE_TITLE } from "../consts";
+import {
+  AUTHOR,
+  AUTHOR_GITHUB,
+  SITE_DESCRIPTION,
+  SITE_LANGUAGE,
+  SITE_TITLE,
+} from "../consts";
+import { baseStructuredData, type StructuredDataNode } from "../lib/seo";
 
 interface Props {
   title?: string;
@@ -11,6 +18,12 @@ interface Props {
   type?: "website" | "article";
   publishedAt?: Date;
   updatedAt?: Date;
+  image?: string;
+  imageAlt?: string;
+  articleSection?: string;
+  articleTags?: readonly string[];
+  structuredData?: StructuredDataNode[];
+  titleSuffix?: boolean;
   noindex?: boolean;
 }
 
@@ -20,23 +33,53 @@ const {
   type = "website",
   publishedAt,
   updatedAt,
+  image,
+  imageAlt,
+  articleSection,
+  articleTags = [],
+  structuredData = [],
+  titleSuffix = true,
   noindex = false,
 } = Astro.props;
 
+if (!Astro.site) {
+  throw new Error("astro.config.mjs must define site for canonical metadata");
+}
+
 const fullTitle =
-  title === SITE_TITLE ? SITE_TITLE : `${title} — ${SITE_TITLE}`;
+  titleSuffix && title !== SITE_TITLE ? `${title} — ${SITE_TITLE}` : title;
 const canonical = new URL(Astro.url.pathname, Astro.site);
-const ogImage = new URL("/og.png", Astro.site);
+const ogImage = image
+  ? new URL(image, Astro.site)
+  : new URL("/og.png", Astro.site);
+const ogImageType = ogImage.pathname.endsWith(".webp")
+  ? "image/webp"
+  : ogImage.pathname.endsWith(".jpg") || ogImage.pathname.endsWith(".jpeg")
+    ? "image/jpeg"
+    : "image/png";
+const ogImageAlt =
+  imageAlt ?? "An index card on warm paper, labelled Technical Fieldnotes";
+const robots = noindex
+  ? "noindex, follow"
+  : "index, follow, max-image-preview:large";
+const graph = {
+  "@context": "https://schema.org",
+  "@graph": [...baseStructuredData(Astro.site), ...structuredData],
+};
+const graphJson = JSON.stringify(graph).replace(/</g, "\\u003c");
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={SITE_LANGUAGE}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="robots" content={robots} />
+    <meta name="author" content={AUTHOR} />
+    <link rel="author" href={new URL("/about/", Astro.site)} />
+    <link rel="me" href={AUTHOR_GITHUB} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -46,22 +89,23 @@ const ogImage = new URL("/og.png", Astro.site);
       title={SITE_TITLE}
       href="/rss.xml"
     />
+    <meta property="og:locale" content="en_GB" />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content={SITE_TITLE} />
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
-    <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta
-      property="og:image:alt"
-      content="An index card on warm paper, labelled Technical Fieldnotes"
-    />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image:secure_url" content={ogImage} />
+    <meta property="og:image:type" content={ogImageType} />
+    {!image && <meta property="og:image:width" content="1200" />}
+    {!image && <meta property="og:image:height" content="630" />}
+    <meta property="og:image:alt" content={ogImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
     {type === "article" && publishedAt && (
       <meta
         property="article:published_time"
@@ -74,6 +118,18 @@ const ogImage = new URL("/og.png", Astro.site);
         content={updatedAt.toISOString()}
       />
     )}
+    {type === "article" && (
+      <meta
+        property="article:author"
+        content={new URL("/about/", Astro.site)}
+      />
+    )}
+    {type === "article" && articleSection && (
+      <meta property="article:section" content={articleSection} />
+    )}
+    {type === "article" &&
+      articleTags.map((tag) => <meta property="article:tag" content={tag} />)}
+    <script is:inline type="application/ld+json" set:html={graphJson} />
     <meta
       name="theme-color"
       content="#f3efe5"

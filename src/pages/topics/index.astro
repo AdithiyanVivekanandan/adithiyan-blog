@@ -7,6 +7,7 @@ import {
   topicDescription,
   topicLabel,
 } from "../../lib/topics";
+import { topicDirectoryPageStructuredData } from "../../lib/seo";
 
 const live = await getPublishedArticles();
 const directory = APPROVED_TOPICS.map((slug) => ({
@@ -15,11 +16,27 @@ const directory = APPROVED_TOPICS.map((slug) => ({
   description: topicDescription(slug),
   count: filterByTopic(live, slug).length,
 })).filter((topic) => topic.count > 0);
+const site = Astro.site;
+
+if (!site) {
+  throw new Error("astro.config.mjs must define site for topic metadata");
+}
+
+const structuredData = [
+  topicDirectoryPageStructuredData(site, {
+    path: "/topics/",
+    name: "Topics",
+    description:
+      "Subject areas covered by Technical Fieldnotes, with published article counts.",
+    topics: directory,
+  }),
+];
 ---
 
 <BaseLayout
   title="Topics"
   description="Subject areas covered by Technical Fieldnotes, with published article counts."
+  structuredData={structuredData}
 >
   <h1 class="page-title">Topics</h1>
   <p class="page-intro">

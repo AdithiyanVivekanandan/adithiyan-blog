@@ -42,7 +42,10 @@ test("search index endpoint publishes valid JSON using published content only", 
   );
   const [entry] = payload.articles;
   assert.equal(entry.slug, "understanding-windows-executables");
-  assert.equal(entry.title, "Understanding Windows Executables");
+  assert.equal(
+    entry.title,
+    "Windows Executable Analysis: PE Format and Runtime",
+  );
   assert.deepEqual(entry.topics, [
     topicLabel("reverse-engineering"),
     topicLabel("systems-tooling"),

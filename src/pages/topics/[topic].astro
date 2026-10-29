@@ -9,6 +9,10 @@ import {
   topicLabel,
   type TopicSlug,
 } from "../../lib/topics";
+import {
+  breadcrumbStructuredData,
+  collectionPageStructuredData,
+} from "../../lib/seo";
 
 export async function getStaticPaths() {
   return APPROVED_TOPICS.map((topic) => ({ params: { topic } }));
@@ -18,9 +22,36 @@ const topic = Astro.params.topic as TopicSlug;
 const label = topicLabel(topic);
 const description = topicDescription(topic);
 const articles = filterByTopic(await getPublishedArticles(), topic);
+const site = Astro.site;
+
+if (!site) {
+  throw new Error("astro.config.mjs must define site for topic metadata");
+}
+
+const structuredData = [
+  collectionPageStructuredData(site, {
+    path: `/topics/${topic}/`,
+    name: label,
+    description,
+    articles: articles.map((article) => ({
+      slug: article.data.slug,
+      title: article.data.title,
+    })),
+  }),
+  breadcrumbStructuredData(site, [
+    { name: "Home", path: "/" },
+    { name: "Topics", path: "/topics/" },
+    { name: label, path: `/topics/${topic}/` },
+  ]),
+];
 ---
 
-<BaseLayout title={label} description={description}>
+<BaseLayout
+  title={`${label} Articles`}
+  description={description}
+  structuredData={structuredData}
+  noindex={articles.length === 0}
+>
   <nav class="breadcrumb" aria-label="Breadcrumb">
     <ol>
       <li>
